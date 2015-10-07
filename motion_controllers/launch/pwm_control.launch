@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="motion_controllers" type="pwm_controller" respawn="false" name="pwm_controller" output="screen">
+    <rosparam file="$(find motion_controllers)/yaml/pwm_controller_params.yaml" command="load" />
+  </node>
+  
+</launch> 
