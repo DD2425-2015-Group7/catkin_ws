@@ -7,11 +7,11 @@
 #include "math.h"
 
 double distance;
-double safetyDistance = 0.5;
+double safetyDistance = 0.3;
 double angle;
 
-double MAX_LINEAR_VEL = 0.1;
-double MAX_ANGULAR_VEL = 0.2;
+double MAX_LINEAR_VEL = 0.3;
+double MAX_ANGULAR_VEL = 0.6;
 
 void setPosition(const geometry_msgs::Point::ConstPtr& msg)
 {

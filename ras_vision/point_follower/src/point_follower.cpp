@@ -91,10 +91,10 @@ public:
                     count = 0;
 
                 }
-                //cv::circle(cv_ptr->image, min_loc, 50, CV_RGB(255,0,0), 9);
+                cv::circle(cv_ptr->image, min_loc, 50, CV_RGB(255,0,0), 9);
                 x = min_loc.x;
                 y = min_loc.y;
-                //cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+                cv::imshow(OPENCV_WINDOW, cv_ptr->image);
                 cv::waitKey(1);
             }else{
                 flag = true;
@@ -109,13 +109,13 @@ public:
             PointCloud cloud;
             pcl::fromROSMsg(*msg,cloud);
             geometry_msgs::Point pub_msg;
-            float cloud_x = cloud(x,y).x;
+            float cloud_x = min;
             float cloud_y = cloud(x,y).y;
             float cloud_z = cloud(x,y).z;
             double cloud_x_pub;
             double cloud_y_pub;
-            if(isnan(cloud_x)||isnan(cloud_y)){
-                cloud_x = 0.0;
+            if(isnan(cloud_y)){
+
                 cloud_y = 0.0;
             }
             cloud_x_pub = (double) cloud_x;
