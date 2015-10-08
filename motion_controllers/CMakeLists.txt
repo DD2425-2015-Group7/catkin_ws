@@ -142,6 +142,18 @@ add_dependencies(pwm_controller ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXP
 target_link_libraries(pwm_controller
    ${catkin_LIBRARIES}
 )
+
+## Declare a C++ executable
+add_executable(go_to_point src/go_to_point.cpp)
+
+## Add cmake target dependencies of the executable
+## same as for the library above
+add_dependencies(go_to_point ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(go_to_point
+   ${catkin_LIBRARIES}
+)
  
 #############
 ## Install ##
