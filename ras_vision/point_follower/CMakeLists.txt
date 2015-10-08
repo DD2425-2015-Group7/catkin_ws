@@ -109,8 +109,8 @@ find_package(PCL REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-  LIBRARIES point_follower
+  #INCLUDE_DIRS include
+  #LIBRARIES point_follower
   CATKIN_DEPENDS kdl_conversions ras_arduino_msgs roscpp rospy std_msgs tf
 #  DEPENDS system_lib
 )
