@@ -67,7 +67,7 @@ public:
 
                 }else{
 
-                    if((min_loc_prev.x > 1.15*min_loc.x)||(min_loc_prev.x<0.85*min_loc.x)||(min_loc_prev.y > 1.15*min_loc.y)||(min_loc_prev.y<0.85*min_loc.y)){
+                    if((min_loc_prev.x > 1.35*min_loc.x)||(min_loc_prev.x<0.65*min_loc.x)||(min_loc_prev.y > 1.35*min_loc.y)||(min_loc_prev.y<0.65*min_loc.y)){
 
                         min = min_prev;
                         min_loc_prev2 = min_loc;
@@ -84,17 +84,17 @@ public:
                     }
 
                 }
-                if(count > 25){
+                if(count > 7){
 
                     cv::minMaxLoc(cv_ptr->image, &min, &max, &min_loc, &max_loc);
                     min_loc_prev = min_loc;
                     count = 0;
 
                 }
-                cv::circle(cv_ptr->image, min_loc, 50, CV_RGB(255,0,0), 9);
+ 		//cv::circle(cv_ptr->image, min_loc, 50, CV_RGB(255,0,0), 9);
                 x = min_loc.x;
                 y = min_loc.y;
-                cv::imshow(OPENCV_WINDOW, cv_ptr->image);
+		//cv::imshow(OPENCV_WINDOW, cv_ptr->image);
                 cv::waitKey(1);
             }else{
                 flag = true;
@@ -110,11 +110,11 @@ public:
             pcl::fromROSMsg(*msg,cloud);
             geometry_msgs::Point pub_msg;
             float cloud_x = min;
-            float cloud_y = cloud(x,y).y;
-            float cloud_z = cloud(x,y).z;
+            float cloud_y = cloud(x,y).x;
+            float cloud_z = cloud(x,y).x;
             double cloud_x_pub;
             double cloud_y_pub;
-            if(isnan(cloud_y)){
+            if(isnan(cloud_x)||isnan(cloud_y)){
 
                 cloud_y = 0.0;
             }
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 
     Point_Follower follow;
 
-    //follow.run();
+    follow.run();
     ros::spin();
 
 
