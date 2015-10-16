@@ -14,6 +14,8 @@ const double wheelDiameter = 0.099, wheelDist = 0.215, wheelRadius = wheelDiamet
 const int ticksPerRevolution = 360;
 const double encStep = (wheelDiameter * PI)/(double)ticksPerRevolution;
 
+std::string odomFrame, baseFrame;
+
 std::mutex mtx;
 int encL = 0, encR = 0, deltaEncL = 0, deltaEncR = 0;
 double x = 0.0, y = 0.0, th = 0.0;
@@ -58,6 +60,8 @@ void poseUpdate(void)
     vth =  delta_th/dt;
     x += delta_x;
     y += delta_y;
+    
+    ROS_INFO("x %f y %f th %f\n", x, y, th);
 
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
@@ -65,8 +69,8 @@ void poseUpdate(void)
     //first, we'll publish the transform over tf
     geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = current_time;
-    odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base_link";
+    odom_trans.header.frame_id = odomFrame;
+    odom_trans.child_frame_id = baseFrame;
 
     odom_trans.transform.translation.x = x;
     odom_trans.transform.translation.y = y;
@@ -79,7 +83,7 @@ void poseUpdate(void)
     //next, we'll publish the odometry message over ROS
     nav_msgs::Odometry odom;
     odom.header.stamp = current_time;
-    odom.header.frame_id = "odom";
+    odom.header.frame_id = odomFrame;
 
     //set the position
     odom.pose.pose.position.x = x;
@@ -88,7 +92,7 @@ void poseUpdate(void)
     odom.pose.pose.orientation = odom_quat;
 
     //set the velocity
-    odom.child_frame_id = "base_link";
+    odom.child_frame_id = baseFrame;
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
     odom.twist.twist.angular.z = vth;
@@ -114,9 +118,9 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "odometry");
 	ros::NodeHandle n("/odometry");;
 	
-    //n.param("right_p", controlPR, 0.7);
+    n.param<std::string>("odometry_frame", odomFrame, "odom");
+    n.param<std::string>("robot_base_link", baseFrame, "base_link");
 
-    ;
     tf::TransformBroadcaster odom_broadcaster_obj;
     odom_broadcaster = &odom_broadcaster_obj;
     ros::Publisher odom_pub_obj = n.advertise<nav_msgs::Odometry>("odom", 50);
