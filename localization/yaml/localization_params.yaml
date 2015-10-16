@@ -1,0 +1,2 @@
+odometry_frame: "map"
+robot_base_link: "base_link"

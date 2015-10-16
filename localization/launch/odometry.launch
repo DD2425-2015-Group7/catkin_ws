@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="localization" type="odometry" respawn="false" name="odometry" output="screen">
+    <rosparam file="$(find localization)/yaml/localization_params.yaml" command="load" />
+  </node>
+  
+</launch> 

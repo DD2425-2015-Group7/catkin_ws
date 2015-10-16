@@ -1,0 +1,9 @@
+# SI units: m/s, rad/s
+linear_velocity_min: 0.2
+linear_velocity_max: 0.8
+on_spot_angular_velocity_max: 6.0
+on_spot_angular_velocity_min: 1.0
+
+# relative errors: fraction, e. g. dist. error/distance
+odometry_translation_error: 0.007
+odometry_on_spot_rotation_error: 0.014
