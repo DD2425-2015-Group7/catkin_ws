@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="detection" type="object_detector" respawn="false" name="object_detector" output="screen">
+    <param name="linear_classifier_model_file" value="$(find detection)/data/lin_class_rgb_test_model.csv" />
+    <param name="detector_test_image_file" value="$(find detection)/data/test_image.png" />
+  </node>
+  
+</launch> 
