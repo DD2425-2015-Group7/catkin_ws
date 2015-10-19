@@ -3,6 +3,7 @@
 #include "geometry_msgs/Pose.h"
 #include "nav_msgs/Odometry.h"
 #include "tf/transform_broadcaster.h"
+#include "math.h"
 
 #include <mutex>
 
@@ -49,6 +50,7 @@ void poseUpdate(void)
     distance /= 2.0;
     double delta_th = ((double)deltaEncR / wheelDist -  (double)deltaEncL  / wheelDist) * encStep;
     th = th0 + ((double)encR / wheelDist - (double)encL / wheelDist) * encStep;
+    th = fmod(th, PI * 2.0);
     mtx.unlock();
 
     ROS_DEBUG("delta_th %f th %f dist %f\n", delta_th, th, distance);
