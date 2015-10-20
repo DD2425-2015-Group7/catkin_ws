@@ -20,6 +20,7 @@ left 6829 -> 10429
 right 8493 -> 12091
 */
 
+#define MAX_REF_ERROR 700
 #define MIN_PWM -250
 #define MAX_PWM 250
 #define MAX_STOP_PWM 10
@@ -33,8 +34,8 @@ right 8493 -> 12091
 const double wheelDist = 0.215, wheelRadius = 0.099/2.0; 
 const int ticksPerRevolution = 360; 
 const int controlRate = 50;
-double controlPL = 0.14, controlIL = 0.001, controlI2L = 0.0;
-double controlPR = 0.14, controlIR = 0.001, controlI2R = 0.0;
+double controlPL = 0.14, controlIL = 0.001, controlDL = 0.0, controlI2L = 0.0;
+double controlPR = 0.14, controlIR = 0.001, controlDR = 0.0, controlI2R = 0.0;
 
 void updateTwist(const geometry_msgs::Twist::ConstPtr& msg)
 {
@@ -57,14 +58,23 @@ ras_arduino_msgs::PWM motorControl(void)
 	static int refTicksL = 0, refTicksR = 0;
 	static int pwmL = 0, pwmR = 0;
 	static int errL = 0, errR = 0, errIntL = 0, errIntR = 0;
+    static int errPrevL = 0, errPrevR = 0;
 	static int errInt2L = 0, errInt2R = 0;
 	static int flagIntL = 1, flagIntR = 1;
+    static int flagIntRef = 1;
 	
 	mtx.lock();
-	refTicksL += (int)((refOmegaL/(2*PI_F*controlRate))*ticksPerRevolution);
-	refTicksR += (int)((refOmegaR/(2*PI_F*controlRate))*ticksPerRevolution);
+    if(flagIntRef){
+        refTicksL += (int)((refOmegaL/(2*PI_F*controlRate))*ticksPerRevolution);
+        refTicksR += (int)((refOmegaR/(2*PI_F*controlRate))*ticksPerRevolution);
+    }
 	errL = refTicksL - encL;
 	errR = refTicksR - encR;
+    if(errL > MAX_REF_ERROR || errL < -MAX_REF_ERROR || errR > MAX_REF_ERROR || errR < -MAX_REF_ERROR){
+        flagIntRef = 0;
+    }else if(flagIntRef != 1){
+        flagIntRef = 1;
+    }
 	ROS_DEBUG("errL: %d\nerrR: %d\n", errL, errR);
 	mtx.unlock();
 	if(flagIntL){
@@ -76,8 +86,11 @@ ras_arduino_msgs::PWM motorControl(void)
 		errInt2R += errIntR;
 	}
 		
-	pwmL = int(controlPL*errL + controlIL*errIntL + controlI2L*errInt2L);
-	pwmR = int(controlPR*errR + controlIR*errIntR + controlI2R*errInt2R);
+    pwmL = int(controlPL*errL + controlIL*errIntL + controlDL*(errL - errPrevL) + controlI2L*errInt2L);
+    pwmR = int(controlPR*errR + controlIR*errIntR + controlDR*(errR - errPrevR) + controlI2R*errInt2R);
+
+    errPrevL = errL;
+    errPrevR = errR;
 	
 	/*
 	if(pwmL > MAX_STOP_PWM)
@@ -135,6 +148,8 @@ int main(int argc, char **argv)
     n.param("left_p", controlPL, 0.7);
     n.param("right_i", controlIR, 0.001);
     n.param("left_i", controlIL, 0.001);
+    n.param("right_d", controlDR, 0.0);
+    n.param("left_d", controlDL, 0.0);
 	
 	ros::Publisher pwm_pub = n.advertise<ras_arduino_msgs::PWM>("/arduino/pwm", 1000);
 	ros::Subscriber twist_sub = n.subscribe<geometry_msgs::Twist>("/cmd_vel", 1000, updateTwist);
