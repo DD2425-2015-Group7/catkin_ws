@@ -2,5 +2,5 @@ right_p: 0.7
 left_p: 0.7
 right_i: 0.001
 left_i: 0.001
-right_d: 0.0
-left_d: 0.0
+right_d: 6.4
+left_d: 6.4
