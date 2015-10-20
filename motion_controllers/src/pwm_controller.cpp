@@ -36,10 +36,17 @@ const int ticksPerRevolution = 360;
 const int controlRate = 50;
 double controlPL = 0.14, controlIL = 0.001, controlDL = 0.0, controlI2L = 0.0;
 double controlPR = 0.14, controlIR = 0.001, controlDR = 0.0, controlI2R = 0.0;
+int stopped = 1;
 
 void updateTwist(const geometry_msgs::Twist::ConstPtr& msg)
 {
 	mtx.lock();
+    if(msg->linear.x > -0.02 && msg->linear.x < 0.02 &&
+            msg->angular.z > -0.01 && msg->angular.z < 0.01){
+        stopped = 1;
+    }else if(stopped != 0){
+        stopped = 0;
+    }
 	refOmegaL = (msg->linear.x - (wheelDist/2.0)*msg->angular.z)/wheelRadius;
 	refOmegaR = (msg->linear.x + (wheelDist/2.0)*msg->angular.z)/wheelRadius;
 	mtx.unlock();
@@ -67,6 +74,14 @@ ras_arduino_msgs::PWM motorControl(void)
     if(flagIntRef){
         refTicksL += (int)((refOmegaL/(2*PI_F*controlRate))*ticksPerRevolution);
         refTicksR += (int)((refOmegaR/(2*PI_F*controlRate))*ticksPerRevolution);
+    }
+    if(stopped){
+        refTicksL = encL;
+        refTicksR = encR;
+        errIntL = 0.0;
+        errIntR = 0.0;
+        errInt2L = 0.0;
+        errInt2R = 0.0;
     }
 	errL = refTicksL - encL;
 	errR = refTicksR - encR;
