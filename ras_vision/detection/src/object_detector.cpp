@@ -5,7 +5,8 @@
 #include "detection/BoundingBox.h"
 #include "detection/BoundingBoxArray.h"
 
-int noThreads = 4;
+int noThreads = 4, imageSaveID = 0;
+std::string savedImagesPath;
 LinearClassifier *linClass;
 MovingWindow *movWin;
 ros::Publisher *bb_pub;
@@ -24,9 +25,9 @@ void rosImg2CImg(const sensor_msgs::Image::ConstPtr& rim, CImg<my_float> &_img)
     assert(_channels==3);
 
     for(int i = 0; i<size; i+=_channels){
-        dataF2[k+0*s1] = rim->data[i+2];
+        dataF2[k+0*s1] = rim->data[i+0];
         dataF2[k+1*s1] = rim->data[i+1];
-        dataF2[k+2*s1] = rim->data[i+0];
+        dataF2[k+2*s1] = rim->data[i+2];
         k++;
     }
 
@@ -58,7 +59,7 @@ void processImage(const sensor_msgs::Image::ConstPtr& msg)
 {
     CImg<my_float> img;
     rosImg2CImg(msg, img);
-    img.resize(320, 240, 1, img.depth());
+    img.resize(320, 240, img.depth(), img.spectrum());
 
     movWin->runWindow(img, DATA_PATCHES);
     std::vector< std::vector<my_float> > dataPatches = movWin->getDataPatches();
@@ -79,6 +80,22 @@ void processImage(const sensor_msgs::Image::ConstPtr& msg)
     bb_pub->publish(bb_array_msg);
 }
 
+void saveImage(const sensor_msgs::Image::ConstPtr& msg)
+{
+    static int counter = 1;
+    CImg<my_float> img;
+    rosImg2CImg(msg, img);
+    img.resize(320, 240, img.depth(), img.spectrum());
+
+    std::ostringstream stringStream;
+    stringStream << savedImagesPath << "/neg" << imageSaveID << "-" << counter << ".png";
+    std::string cos = stringStream.str();
+    std::cout << cos << std::endl;
+
+    img.save(cos.c_str());
+    counter++;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -95,12 +112,15 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "object_detector");
 	ros::NodeHandle n("/object_detector");
     
-    std::string modelFile, imageTestFile, imageTopic, bbTopic;
+    std::string modelFile, imageTestFile, imageTopic, imageSaveTopic, bbTopic;
     n.param<std::string>("linear_classifier_model_file", modelFile, "");
     n.param<int>("linear_classifier_threads", noThreads, 1);
     n.param<std::string>("detector_test_image_file", imageTestFile, "");
     n.param<std::string>("detector_image_topic", imageTopic, "/camera/rgb/image_rect_color");
     n.param<std::string>("detector_bounding_box_topic", bbTopic, "/object_detector/bounding_boxes");
+    n.param<std::string>("save_image_topic", imageSaveTopic, "/object_detector/save_image");
+    n.param<std::string>("save_image_path", savedImagesPath, "data/negative_boost");
+    n.param<int>("save_image_id", imageSaveID, 0);
 
     linClass = new LinearClassifier(modelFile.c_str());
     int sc[] = {320, 240, 160, 120, 80, 60};
@@ -110,6 +130,7 @@ int main(int argc, char **argv)
     ros::Publisher bb_pub_obj = n.advertise<detection::BoundingBoxArray>(bbTopic, 50);
     bb_pub = &bb_pub_obj;
     ros::Subscriber image_sub = n.subscribe<sensor_msgs::Image>(imageTopic, 2, processImage);
+    ros::Subscriber image_save_sub = n.subscribe<sensor_msgs::Image>(imageSaveTopic, 2, saveImage);
 	
 
     //CImg<my_float> img = new CImg<my_float> (imageFile.c_str());

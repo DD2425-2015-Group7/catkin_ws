@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+  
+   <arg name="bag" default="" />
+  <arg name="session_id" default="1" />
+   
+  <node pkg="detection" type="object_detector" respawn="false" name="object_detector" output="screen">
+    <param name="linear_classifier_model_file" value="$(find detection)/models/lin_class_cube_model.csv" />
+    <param name="detector_test_image_file" value="$(find detection)/data/test_image.png" />
+    <param name="linear_classifier_threads" value="8" />
+    <param name="save_image_id" value="$(arg session_id)" />
+    <param name="save_image_path" value="$(find detection)/data/negative_boost/data" />
+  </node>
+  
+  <node pkg="image_transport" type="republish" respawn="false" name="republish" output="screen" args="compressed in:=/republish/image_rect_color_compressed raw out:=/object_detector/save_image" />
+  
+  <node pkg="detection" type="sample_bag.py" respawn="false" name="sample_bag" output="screen" required="true">
+      <param name="boost_session_id" value="$(arg session_id)" />
+      <param name="img_bag" value="$(arg bag)" />
+      <param name="bb_bag" value="$(find detection)/data/bb_negative.bag" />
+      <param name="sample_csv_file" value="$(find detection)/data/negative_boost/neg_boost$(arg session_id).csv" />
+  </node>
+</launch> 

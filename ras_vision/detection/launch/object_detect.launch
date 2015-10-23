@@ -3,7 +3,7 @@
   <master auto="start"/>
    
   <node pkg="detection" type="object_detector" respawn="false" name="object_detector" output="screen">
-    <param name="linear_classifier_model_file" value="$(find detection)/data/lin_class_cube_model.csv" />
+    <param name="linear_classifier_model_file" value="$(find detection)/models/lin_class_cube_model.csv" />
     <param name="detector_test_image_file" value="$(find detection)/data/test_image.png" />
     <param name="linear_classifier_threads" value="8" />
   </node>

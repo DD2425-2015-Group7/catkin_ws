@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="detection" type="object_detector" respawn="false" name="object_detector" output="screen">
+    <param name="linear_classifier_model_file" value="$(find detection)/models/lin_class_cube_model.csv" />
+    <param name="detector_test_image_file" value="$(find detection)/data/test_image.png" />
+    <param name="linear_classifier_threads" value="8" />
+  </node>
+  
+  <node pkg="image_transport" type="republish" respawn="false" name="republish" output="screen" args="compressed in:=/camera/rgb/image_rect_color_compressed raw out:=/camera/rgb/image_rect_color" />
+  
+  <arg name="bag" default="" />
+  <arg name="start" default="0" />
+  <arg name="duration" default="300" />
+  <node pkg="rosbag" type="play" name="player" output="screen" args="-s $(arg start) -u $(arg duration) $(arg bag)" required="true"/>
+  <node pkg="rosbag" type="record" name="recorder" output="screen" args="-O $(find detection)/data/bb_negative.bag /object_detector/bounding_boxes" />
+</launch> 

@@ -1,7 +1,7 @@
 import csv
 import random
 
-fileName = 'negative_train.csv'
+fileName = 'data/negative_train/negative_train.csv'
 fileNumbers = range(0,6)
 boundingBoxesPerImage = 20
 width = 320
@@ -33,4 +33,4 @@ with open(fileName, 'wb') as csvfile:
     for n in fileNumbers:
         for i in range(0, boundingBoxesPerImage):
             bb = boundingBoxes[random.randrange(0, len(boundingBoxes))]
-            awriter.writerow(["negative_train/neg{}.png".format(n), -1, bb[0], bb[1], bb[2], bb[3]])
+            awriter.writerow(["negative_train/data/neg{}.png".format(n), -1, bb[0], bb[1], bb[2], bb[3]])

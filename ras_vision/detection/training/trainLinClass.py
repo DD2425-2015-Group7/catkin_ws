@@ -8,9 +8,10 @@ bbx = 30
 bby = 30
 nChannels = 3
 svm_train_param = "-t 0 -c 10"
-training_data_file = 'training_data.csv'
-svm_model_out_file = 'cubeSvm.model'
-lin_class_out_file = 'lin_class_cube_model.csv'
+training_data_file = 'data/training_data.csv'
+data_path_prefix = 'data/'
+svm_model_out_file = 'models/cubeSvm.model'
+lin_class_out_file = 'models/lin_class_cube_model.csv'
 
 dimensions = bbx * bby * nChannels
 
@@ -20,7 +21,7 @@ def loadData(fileName):
     with open(fileName, 'rb') as csvfile:
         areader = csv.reader(csvfile, delimiter='\t')
         for row in areader:
-            img = misc.imread(row[0])
+            img = misc.imread(data_path_prefix+row[0])
             labels += [int(row[1])]
             x0 = int(row[2])
             y0 = int(row[3])
@@ -84,6 +85,6 @@ saveLinClassModel(dimensions, bias, W, avg, lin_class_out_file)
 
 #testing the model
 p_label, p_acc, p_val = svm_predict(trainLabels,trainData, m)
-print p_label
+#print p_label
 
 #m = svm_load_model('cubeSvm.model')

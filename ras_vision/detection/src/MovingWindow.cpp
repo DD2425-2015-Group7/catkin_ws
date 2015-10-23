@@ -24,7 +24,7 @@ void MovingWindow::runWindow(CImg<my_float> img, ReqOutput ro)
     CImg<double> imgCrop = CImg<double>();
     
     for(int s = 0; s < scales.size(); s+=2){
-        img.resize(scales[s], scales[s+1], 1, img.depth());
+        img.resize(scales[s], scales[s+1], img.depth(), img.spectrum());
         
         for (int y = windowSizeY; y<scales[s+1]; y+=stepY){
         for (int x = windowSizeX; x<scales[s]; x+=stepX){
