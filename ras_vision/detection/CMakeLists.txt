@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   message_generation
+  message_filters
 )
 
 ## System dependencies are found with CMake's conventions
@@ -131,7 +132,7 @@ include_directories(
 # add_dependencies(detection ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(object_detector src/object_detector.cpp src/LinearClassifier.cpp src/MovingWindow.cpp)
+add_executable(object_detector src/object_detector.cpp src/LinearClassifier.cpp src/MovingWindow.cpp src/ImageConverter.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -139,6 +140,13 @@ add_dependencies(object_detector ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(object_detector
+  ${catkin_LIBRARIES}
+)
+
+
+add_executable(show_detection src/show_detection.cpp src/ImageConverter.cpp)
+add_dependencies(show_detection ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(show_detection
   ${catkin_LIBRARIES}
 )
 

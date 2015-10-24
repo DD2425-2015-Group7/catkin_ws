@@ -4,6 +4,7 @@
 #include "detection/MovingWindow.h"
 #include "detection/BoundingBox.h"
 #include "detection/BoundingBoxArray.h"
+#include "detection/ImageConverter.h"
 
 int noThreads = 4, imageSaveID = 0;
 std::string savedImagesPath;
@@ -11,29 +12,6 @@ LinearClassifier *linClass;
 MovingWindow *movWin;
 ros::Publisher *bb_pub;
 
-void rosImg2CImg(const sensor_msgs::Image::ConstPtr& rim, CImg<my_float> &_img)
-{
-    //This is NOT tested! The data order (x,y,c) may be different.
-    int _width = rim->width;
-    int _height = rim->height;
-    int _channels = rim->step/rim->width;
-
-    int size = _width*_height*_channels;
-    int s1 = _width*_height;
-    char * dataF2 = (char*) malloc(size);
-    int k = 0;
-    assert(_channels==3);
-
-    for(int i = 0; i<size; i+=_channels){
-        dataF2[k+0*s1] = rim->data[i+0];
-        dataF2[k+1*s1] = rim->data[i+1];
-        dataF2[k+2*s1] = rim->data[i+2];
-        k++;
-    }
-
-    _img = CImg<char> (dataF2, _width, _height, 1, _channels, false); //false for is_shared
-    free(dataF2);
-}
 
 void testLinearClassifier(void)
 {
