@@ -150,6 +150,12 @@ target_link_libraries(show_detection
   ${catkin_LIBRARIES}
 )
 
+add_executable(sequence_filter src/sequence_filter.cpp)
+add_dependencies(sequence_filter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(sequence_filter
+  ${catkin_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
