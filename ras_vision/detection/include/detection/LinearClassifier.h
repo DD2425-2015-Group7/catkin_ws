@@ -3,8 +3,14 @@
 #include <vector>
 #include <thread>
 #include <assert.h>
+#include <cmath>
 
 typedef double my_float;
+
+struct Classification{
+    int index;
+    my_float prob;
+};
 
 class LinearClassifier{
 
@@ -12,7 +18,7 @@ public:
     LinearClassifier(const char modelFile[]);
     LinearClassifier(void);
     
-    std::vector <int> getPositive(std::vector< std::vector<my_float> > data, int threads);
+    std::vector <struct Classification> getPositive(std::vector< std::vector<my_float> > data, int threads);
     bool testClassifier(void);
     
 private:

@@ -51,15 +51,19 @@ std::vector <my_float> LinearClassifier::classify(std::vector< std::vector<my_fl
     return clsResult;    
 }
 
-std::vector <int> LinearClassifier::getPositive(std::vector< std::vector<my_float> > data, int threads)
+std::vector <struct Classification> LinearClassifier::getPositive(std::vector< std::vector<my_float> > data, int threads)
 {
-    std::vector <int> posIdx;
+    std::vector <struct Classification> pos;
     classify(data, threads);
     for(int i = 0; i < clsResult.size(); i++){
-        if(clsResult[i]>0)
-            posIdx.push_back(i);
+        if(clsResult[i]>0){
+            struct Classification cls;
+            cls.index = i;
+            cls.prob = 1.0/(1.0+exp(-clsResult[i]));
+            pos.push_back(cls);
+        }
     }
-    return posIdx;
+    return pos;
 }
 
 void LinearClassifier::initTestData(void)

@@ -24,10 +24,10 @@ void testLinearClassifier(void)
 void runDetection(CImg<my_float> *img)
 {
     movWin->runWindow(*img, DATA_PATCHES);
-    std::vector <int> pos = linClass->getPositive(movWin->getDataPatches(), 2);
+    std::vector <struct Classification> pos = linClass->getPositive(movWin->getDataPatches(), 2);
     std::vector <int> bb;
     for(int i = 0; i<pos.size(); i++){
-        bb = movWin->getBoundingBox(pos[i]);
+        bb = movWin->getBoundingBox(pos[i].index);
         std::cout << "[" << bb[0] << " " << bb[1] << "; " << bb[2] << " " << bb[3] << "]" << std::endl;
     }
 }
@@ -41,18 +41,19 @@ void processImage(const sensor_msgs::Image::ConstPtr& msg)
 
     movWin->runWindow(img, DATA_PATCHES);
     std::vector< std::vector<my_float> > dataPatches = movWin->getDataPatches();
-    std::vector <int> pos = linClass->getPositive(dataPatches, noThreads);
+    std::vector <struct Classification> pos = linClass->getPositive(dataPatches, noThreads);
     std::vector <int> bb;
     detection::BoundingBox bb_msg;
     detection::BoundingBoxArray bb_array_msg;
     bb_array_msg.header = msg->header;
     ROS_INFO("positives %lu, bb total count %lu\n", pos.size(), dataPatches.size());
     for(int i = 0; i<pos.size(); i++){
-        bb = movWin->getBoundingBox(pos[i]);
+        bb = movWin->getBoundingBox(pos[i].index);
         bb_msg.x0 = bb[0];
         bb_msg.y0 = bb[1];
         bb_msg.x1 = bb[2];
         bb_msg.y1 = bb[3];
+        bb_msg.prob = pos[i].prob;
         bb_array_msg.bounding_boxes.push_back(bb_msg);
     }
     bb_pub->publish(bb_array_msg);
