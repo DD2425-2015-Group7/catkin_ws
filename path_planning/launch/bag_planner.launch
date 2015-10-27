@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="path_planning" type="path_planner" respawn="false" name="path_planner" output="screen">
+    <param name="bag_file" value="$(find path_planning)/data/pose_seq1.bag" />
+  </node>
+  
+</launch> 
