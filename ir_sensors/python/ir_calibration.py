@@ -22,10 +22,10 @@ class SensorCalib():
     measuringEnabled = False
     curMeasurement = []
     curSenIdx = 0
-    #dstLong = [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8]
-    dstLong = [0.2, 0.25, 0.3, 0.35]
-    #dstShort = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
-    dstShort = [0.1, 0.15, 0.2]
+    dstLong = [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8]
+    dstShort = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    #dstLong = [0.2, 0.25, 0.3, 0.35]
+    #dstShort = [0.1, 0.15, 0.2]
         
     def readAdc(self, msg):
         self.lck.acquire()
