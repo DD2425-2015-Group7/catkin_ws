@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="ir_sensors" type="ir_calibration.py" respawn="false" name="ir_calibration" output="screen">
+    <rosparam file="$(find ir_sensors)/yaml/ir_setup.yaml" command="load" />
+    <param name="ir_sensors_coeff_file" value="$(find ir_sensors)/yaml/calib_params.yaml" />
+  </node>
+  
+</launch> 

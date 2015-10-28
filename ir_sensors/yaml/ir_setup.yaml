@@ -1,0 +1,9 @@
+ir_sensor_max_count: 8
+ir_sensor1_enabled: true
+ir_sensor2_enabled: true
+ir_sensor3_enabled: false
+ir_sensor4_enabled: true
+ir_sensor5_enabled: true
+ir_sensor6_enabled: false
+ir_sensor7_enabled: true
+ir_sensor8_enabled: true
