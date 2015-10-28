@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "go_to_point");
     ros::NodeHandle handle;
 
-    ros::Subscriber sub_posi = handle.subscribe("/next_point", 1000, setPosition);
+    ros::Subscriber sub_posi = handle.subscribe("/path_point", 1000, setPosition);
     
     ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
 
