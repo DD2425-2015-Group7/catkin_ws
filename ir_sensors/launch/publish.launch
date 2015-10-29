@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+   
+  <node pkg="ir_sensors" type="ir_publish.py" respawn="false" name="ir_publish" output="screen">
+    <rosparam file="$(find ir_sensors)/yaml/ir_setup.yaml" command="load" />
+    <rosparam file="$(find ir_sensors)/yaml/calib_params.yaml" command="load" />
+  </node>
+  
+</launch> 
