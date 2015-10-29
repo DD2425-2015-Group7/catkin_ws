@@ -1,6 +1,6 @@
 sensor_max_count: 8
-type1_range_max: 0.4
-type1_range_min: 0.03
+type1_range_max: 0.3
+type1_range_min: 0.04
 type2_range_max: 0.8
 type2_range_min: 0.1
 sensor1_type: 1
