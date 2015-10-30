@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+  
+  <node pkg="motion_controllers" type="go_to_point" respawn="false" name="go_to_point" output="screen">
+  </node> 
+  
+  <node pkg="motion_controllers" type="pub_points_list" respawn="false" name="pub_points_list" output="screen">
+  </node> 
+  
+</launch> 

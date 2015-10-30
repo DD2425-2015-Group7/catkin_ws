@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+  <node pkg="rosserial_python" type="serial_node.py" respawn="false" name="serial_node" output="screen" args="_port:=/dev/ttyACM0"/>
+  <include file="$(find motion_controllers)/launch/pwm_control.launch" />
+  <include file="$(find localization)/launch/localize.launch" />
+  <include file="$(find detection)/launch/object_detect.launch" />
+  <node pkg="ras_maze_map" type="ras_maze_map_node" respawn="false" name="ras_maze_map_node" output="screen" args="_map_file:=$(find ras_maze_map)/maps/small_maze.txt" />
+    
+  <!--
+  <node pkg="wall_follower" type="wall_follower" respawn="false" name="wall_follower" output="screen" />
+  -->
+  <include file="$(find motion_controllers)/launch/path_follow.launch" />
+  
+  <include file="$(find openni2_launch)/launch/openni2.launch">
+    <arg name="depth_registration" value="true"/>
+  </include>
+  <node pkg="plane_extraction" type="plane_extraction" respawn="false" name="plane_extraction" output="screen" />
+
+  <include file="$(find path_planning)/launch/bag_planner.launch" />
+  
+</launch> 
