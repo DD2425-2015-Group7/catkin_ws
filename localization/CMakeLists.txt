@@ -131,15 +131,16 @@ include_directories(
 ## either from message generation or dynamic reconfigure
 # add_dependencies(localization ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-## Declare a C++ executable
+
 add_executable(odometry src/odometry.cpp)
-
-## Add cmake target dependencies of the executable
-## same as for the library above
 add_dependencies(odometry ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
 target_link_libraries(odometry
+   ${catkin_LIBRARIES}
+)
+
+add_executable(mcl_node src/mcl_node.cpp)
+add_dependencies(mcl_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(mcl_node
    ${catkin_LIBRARIES}
 )
 

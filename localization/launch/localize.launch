@@ -6,4 +6,8 @@
     <rosparam file="$(find localization)/yaml/localization_params.yaml" command="load" />
   </node>
   
+  <node pkg="localization" type="mcl_node" respawn="false" name="mcl_node" output="screen">
+    <rosparam file="$(find localization)/yaml/localization_params.yaml" command="load" />
+  </node>
+  
 </launch> 

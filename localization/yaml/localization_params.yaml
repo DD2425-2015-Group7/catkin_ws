@@ -1,2 +1,5 @@
-odometry_frame: "map"
+map_frame: "map"
+map_offset_x: 0.0
+map_offset_y: 0.0
+odometry_frame: "odom"
 robot_base_link: "base_link"
