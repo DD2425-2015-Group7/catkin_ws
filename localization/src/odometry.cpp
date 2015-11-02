@@ -26,7 +26,11 @@ ros::Time current_time, last_time;
 ros::Publisher *odom_pub;
 tf::TransformBroadcaster *odom_broadcaster;
 
+geometry_msgs::TransformStamped *odom_trans;
+nav_msgs::Odometry *odom;
+
 void poseUpdate(void);
+void posePublish(void);
 void updateEncoders(const ras_arduino_msgs::Encoders::ConstPtr& msg);
 
 void updateEncoders(const ras_arduino_msgs::Encoders::ConstPtr& msg)
@@ -42,16 +46,15 @@ void updateEncoders(const ras_arduino_msgs::Encoders::ConstPtr& msg)
 
 void poseUpdate(void)
 {
+    mtx.lock();
     current_time = ros::Time::now();
     double dt = (current_time - last_time).toSec();
-
-    mtx.lock();
+    
     double distance = (double)deltaEncR*encStep + (double)deltaEncL*encStep;
     distance /= 2.0;
     double delta_th = ((double)deltaEncR / wheelDist -  (double)deltaEncL  / wheelDist) * encStep;
     th = th0 + ((double)encR / wheelDist - (double)encL / wheelDist) * encStep;
     th = fmod(th, PI * 2.0);
-    mtx.unlock();
 
     ROS_DEBUG("delta_th %f th %f dist %f\n", delta_th, th, distance);
 
@@ -65,44 +68,51 @@ void poseUpdate(void)
     
     ROS_DEBUG("x %f y %f th %f\n", x, y, th);
 
+    last_time = current_time;
+    
+    mtx.unlock();
+}
+
+void posePublish(void)
+{
+    mtx.lock();
+    
+    //first, we'll publish the transform over tf
+    odom_trans->header.stamp = current_time;
+    odom_trans->header.frame_id = odomFrame;
+    odom_trans->child_frame_id = baseFrame;
+    
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
 
-    //first, we'll publish the transform over tf
-    geometry_msgs::TransformStamped odom_trans;
-    odom_trans.header.stamp = current_time;
-    odom_trans.header.frame_id = odomFrame;
-    odom_trans.child_frame_id = baseFrame;
-
-    odom_trans.transform.translation.x = x;
-    odom_trans.transform.translation.y = y;
-    odom_trans.transform.translation.z = 0.0;
-    odom_trans.transform.rotation = odom_quat;
-
-    //send the transform
-    odom_broadcaster->sendTransform(odom_trans);
+    odom_trans->transform.translation.x = x;
+    odom_trans->transform.translation.y = y;
+    odom_trans->transform.translation.z = 0.0;
+    odom_trans->transform.rotation = odom_quat;
 
     //next, we'll publish the odometry message over ROS
-    nav_msgs::Odometry odom;
-    odom.header.stamp = current_time;
-    odom.header.frame_id = odomFrame;
+    odom->header.stamp = current_time;
+    odom->header.frame_id = odomFrame;
 
     //set the position
-    odom.pose.pose.position.x = x;
-    odom.pose.pose.position.y = y;
-    odom.pose.pose.position.z = 0.0;
-    odom.pose.pose.orientation = odom_quat;
+    odom->pose.pose.position.x = x;
+    odom->pose.pose.position.y = y;
+    odom->pose.pose.position.z = 0.0;
+    odom->pose.pose.orientation = odom_quat;
 
     //set the velocity
-    odom.child_frame_id = baseFrame;
-    odom.twist.twist.linear.x = vx;
-    odom.twist.twist.linear.y = vy;
-    odom.twist.twist.angular.z = vth;
-
+    odom->child_frame_id = baseFrame;
+    odom->twist.twist.linear.x = vx;
+    odom->twist.twist.linear.y = vy;
+    odom->twist.twist.angular.z = vth;
+    
+    mtx.unlock();
+    
+    //send the transform
+    odom_broadcaster->sendTransform(*odom_trans);
+    
     //publish the message
-    odom_pub->publish(odom);
-
-    last_time = current_time;
+    odom_pub->publish(*odom);
 }
 
 int main(int argc, char **argv)
@@ -128,6 +138,13 @@ int main(int argc, char **argv)
     ros::Publisher odom_pub_obj = n.advertise<nav_msgs::Odometry>("odom", 50);
     odom_pub = &odom_pub_obj;
 	ros::Subscriber encoder_sub = n.subscribe<ras_arduino_msgs::Encoders>("/arduino/encoders", 1000, updateEncoders);
+    
+    geometry_msgs::TransformStamped ot;
+    odom_trans = &ot;
+    
+    nav_msgs::Odometry od;
+    odom = &od;
+    
 
     current_time = ros::Time::now();
     last_time = ros::Time::now();
@@ -137,6 +154,7 @@ int main(int argc, char **argv)
     
 	while (ros::ok())
 	{
+        posePublish();
 		ros::spinOnce(); // Run the callbacks.
 		loop_rate.sleep();
 	}
