@@ -63,7 +63,7 @@ void poseUpdate(void)
     x += delta_x;
     y += delta_y;
     
-    ROS_INFO("x %f y %f th %f\n", x, y, th);
+    ROS_DEBUG("x %f y %f th %f\n", x, y, th);
 
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(th);
