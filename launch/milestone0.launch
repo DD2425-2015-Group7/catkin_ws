@@ -2,6 +2,7 @@
 <launch>
   <master auto="start"/>
   <include file="$(find motion_controllers)/launch/pwm_control.launch" />
+  <remap from="/next_point" to="/path_point"/>
   <node pkg="motion_controllers" type="go_to_point" respawn="false" name="go_to_point" output="screen">
   </node> 
    <include file="$(find point_follower)/launch/point_follower.launch" />

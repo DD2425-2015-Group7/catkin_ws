@@ -17,9 +17,9 @@ void setPosition(const geometry_msgs::Point::ConstPtr& msg)
 {
     distance = sqrt(msg.get()->x * msg.get()->x + msg.get()->y * msg.get()->y);
 
-    if(msg.get()->y != 0)
+    if(msg.get()->y > 0.001 ||  msg.get()->y < -0.001)
     {
-        angle = (msg.get()->x / msg.get()->y) ;
+        angle = atan2(msg.get()->y, msg.get()->x) ;
     }
     else
     {
