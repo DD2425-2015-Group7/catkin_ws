@@ -83,7 +83,7 @@ int main(int argc, char **argv)
     tf::TransformListener listener_obj;
     tf_listener = &listener_obj;
     
-	ros::Subscriber odom_sub = n.subscribe<nav_msgs::Odometry>("odom", 200, updateOdom);
+	ros::Subscriber odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 200, updateOdom);
 
     current_time = ros::Time::now();
 

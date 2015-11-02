@@ -135,7 +135,7 @@ int main(int argc, char **argv)
 
     tf::TransformBroadcaster odom_broadcaster_obj;
     odom_broadcaster = &odom_broadcaster_obj;
-    ros::Publisher odom_pub_obj = n.advertise<nav_msgs::Odometry>("odom", 50);
+    ros::Publisher odom_pub_obj = n.advertise<nav_msgs::Odometry>("/odom", 50);
     odom_pub = &odom_pub_obj;
 	ros::Subscriber encoder_sub = n.subscribe<ras_arduino_msgs::Encoders>("/arduino/encoders", 1000, updateEncoders);
     
