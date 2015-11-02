@@ -2,6 +2,7 @@
 #include <ras_arduino_msgs/ADConverter.h>
 #include <geometry_msgs/Twist.h>
 #include <math.h>
+#include "ir_sensors/RangeArray.h"
 
 double alpha = -0.01;
 unsigned int distance_lefts_front = 0;
@@ -34,14 +35,16 @@ enum States{
 
 };
 
-void distanceCallback(const ras_arduino_msgs::ADConverter::ConstPtr &msg)
+void distanceCallback(const ir_sensors::RangeArray::ConstPtr &msg)
 {
-  distance_lefts_front = msg->ch1;
-  distance_lefts_back = msg->ch2;
-  distance_front_left = msg->ch4;
-  distance_front_right = msg->ch5;
-  distancef_rights_front = msg->ch7;
-  distanceb_rights_back = msg->ch8;
+    assert(msg->array.size() == 6);
+    
+    distance_lefts_front = msg->array[0].range;
+    distance_lefts_back = msg->array[1].range;
+    distance_front_left = msg->array[2].range;
+    distance_front_right = msg->array[3].range;
+    distancef_rights_front = msg->array[4].range;
+    distanceb_rights_back = msg->array[5].range;
 }
 
 int main(int argc, char **argv)
@@ -50,9 +53,9 @@ int main(int argc, char **argv)
 
   ros::NodeHandle n;
 
-  ros::Publisher twist_pub = n.advertise<geometry_msgs::Twist>("motor_controller/twist", 1000);
+  ros::Publisher twist_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
 
-  ros::Subscriber dist_sub = n.subscribe("arduino/adc", 1000, distanceCallback);
+  ros::Subscriber dist_sub = n.subscribe("/ir_publish/sensors", 1000, distanceCallback);
 
   ros::Rate loop_rate(10);
 
