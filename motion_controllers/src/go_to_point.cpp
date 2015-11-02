@@ -57,17 +57,12 @@ int main(int argc, char *argv[])
             }
             else
             {
-                if(angle < 1.0 && angle > 0.0)
-                {
-                    t.angular.z = -MAX_ANGULAR_VEL;
-                }
-                else if(angle < 0.0 && angle > -1.0)
+                t.angular.z = -0.5 * angle;
+                if(t.angular.z > MAX_ANGULAR_VEL)
                 {
                     t.angular.z = MAX_ANGULAR_VEL;
-                }
-                else
-                {
-                    t.angular.z =-MAX_ANGULAR_VEL / angle;
+                }else if(t.angular.z < -MAX_ANGULAR_VEL){
+                    t.angular.z = -MAX_ANGULAR_VEL;
                 }
             }
         }

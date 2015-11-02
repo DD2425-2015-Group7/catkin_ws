@@ -20,7 +20,7 @@ left 6829 -> 10429
 right 8493 -> 12091
 */
 
-#define MAX_REF_ERROR 700
+#define MAX_REF_ERROR 400
 #define MIN_PWM -250
 #define MAX_PWM 250
 #define MAX_STOP_PWM 10
