@@ -28,6 +28,7 @@ nav_msgs::Path path;
 
 void setPath(const nav_msgs::Path::ConstPtr& msg)
 {
+    ROS_INFO("set path");
     path = *msg;
 }
 
@@ -63,6 +64,7 @@ void setPath(const nav_msgs::Path::ConstPtr& msg)
 
 void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
 {
+  ROS_INFO("calculatePosition");
   if(nextPoint > path.poses.size() - 1)
   {
     ROS_INFO("Destination reached");
@@ -72,13 +74,17 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
   }
   else
   {
+
     goalX = path.poses[nextPoint].pose.position.x;
     goalY = path.poses[nextPoint].pose.position.y;
-
+    //ROS_INFO("Goal Position X:" , goalX , "Goal Position Y" , goalY);
+    ROS_INFO("Goal");
     currentX = msg->pose.pose.position.x;
     currentY = msg->pose.pose.position.y;
-
-   double distance = sqrt((goalY-currentY)*(goalY-currentY) + (goalX-   currentX)*(goalX-currentX));
+    //ROS_INFO("Current Position X:", currentX ,"Current Position Y",currentY);
+    ROS_INFO("Current");
+   double distance = sqrt((goalY-currentY)*(goalY-currentY) + (goalX-currentX)*(goalX-currentX));
+    //ROS_INFO("distance",distance);
    if(distance > closeEnough)    
    {
        p.x = goalX - currentX;
@@ -99,7 +105,8 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "pub_points_list");
     ros::NodeHandle handle;
 
-    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("path",1000,setPath);
+    //ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("path_planner/path",1000,setPath);
+    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/path",1000,setPath);
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("odom",1000,calculatePosition);
     ros::Publisher pub_point = handle.advertise<geometry_msgs::Point>("/path_point", 1000);
     //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
