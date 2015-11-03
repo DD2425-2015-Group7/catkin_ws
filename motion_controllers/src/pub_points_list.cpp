@@ -84,7 +84,7 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
     //ROS_INFO("Current Position X:", currentX ,"Current Position Y",currentY);
     ROS_INFO("Current");
    double distance = sqrt((goalY-currentY)*(goalY-currentY) + (goalX-currentX)*(goalX-currentX));
-    //ROS_INFO("distance",distance);
+    //ROS_INFO("distance",(double) distance);
    if(distance > closeEnough)    
    {
        p.x = goalX - currentX;
@@ -94,7 +94,10 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
    {
     p.x = 0.0;
     p.y = 0.0; 
-    nextPoint++;     
+
+    nextPoint++;
+
+    ROS_INFO("NextPoint:");     
    }
   }
 }
