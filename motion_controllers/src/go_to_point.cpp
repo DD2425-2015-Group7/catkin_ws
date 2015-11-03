@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            t.linear.x = MAX_LINEAR_VEL *  (1 - safetyDistance / distance);
+            t.linear.x = MAX_LINEAR_VEL *  (1 -  safetyDistance / distance);
 
             if(angle == 0.0)
             {

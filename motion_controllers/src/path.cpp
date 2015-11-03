@@ -32,6 +32,9 @@ int main(int argc, char **argv)
   path.poses.push_back(p2);
   path.poses.push_back(p3);
 
+  path.header.stamp = ros::Time::now();
+  path.header.frame_id = "map";
+
   while (ros::ok())
   {
     path_pub.publish(path);
