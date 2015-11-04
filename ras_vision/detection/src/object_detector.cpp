@@ -46,7 +46,7 @@ void processImage(const sensor_msgs::Image::ConstPtr& msg)
     detection::BoundingBox bb_msg;
     detection::BoundingBoxArray bb_array_msg;
     bb_array_msg.header = msg->header;
-    ROS_INFO("positives %lu, bb total count %lu\n", pos.size(), dataPatches.size());
+    ROS_DEBUG("positives %lu, bb total count %lu\n", pos.size(), dataPatches.size());
     for(int i = 0; i<pos.size(); i++){
         bb = movWin->getBoundingBox(pos[i].index);
         bb_msg.x0 = bb[0];
