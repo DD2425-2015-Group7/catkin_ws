@@ -26,6 +26,9 @@
 #include <string>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
+#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2, detection::BoundingBoxArray> Policy;
 
 using namespace message_filters;
 
@@ -42,14 +45,15 @@ public:
 
     void run(){
 
-        message_filters::Subscriber<detection::BoundingBoxArray> b_box(n, "/BoundingBoxArray", 1);
+        message_filters::Subscriber<detection::BoundingBoxArray> b_box(n, "/object_detector/bounding_boxes", 1);
         message_filters::Subscriber<sensor_msgs::PointCloud2> c_sub(n,"/camera/depth_registered/points", 1);
 
-        message_filters::TimeSynchronizer<sensor_msgs::PointCloud2, detection::BoundingBoxArray> sync(c_sub, b_box, 30);
+        //message_filters::TimeSynchronizer<sensor_msgs::PointCloud2, detection::BoundingBoxArray> sync(c_sub, b_box, 30);
+        Synchronizer<Policy> sync(Policy(10), c_sub, b_box);
 
         c_pub = n.advertise<sensor_msgs::PointCloud2> ("/clustered_object_cloud", 1);
         oloc_pub = n.advertise<geometry_msgs::Point>("/object_point",1);
-
+        std::cerr << "in the initialization "<< std::endl;
         sync.registerCallback(boost::bind(&Plane_Extraction::cloud_callback,this, _1, _2));
         /*b_box = n.subscribe("/BoundingBoxArray",1, &Plane_Extraction::Bounding_callback,this);
         c_sub = n.subscribe ("/camera/depth_registered/points", 1, &Plane_Extraction::cloud_callback, this);*/
@@ -80,7 +84,7 @@ public:
 
         pcl::fromROSMsg(*msg,*init_cloud);
         pcl::fromROSMsg(*msg,cloud_blob_test);
-
+        std::cerr << "in callback init" << std::endl;
         for(int k=0; k<msg_b->bounding_boxes.size();++k){
 
 
@@ -129,6 +133,8 @@ public:
             // While 30% of the original cloud is still there
             while (cloud_filtered->points.size() > 0.3 * nr_points)
             {
+                std::cerr << "Entered Plane While "<< std::endl;
+
                 // Segment the largest planar component from the remaining cloud
                 seg.setInputCloud(cloud_filtered);
                 seg.segment(*inliers, *coefficients);
@@ -172,6 +178,7 @@ public:
                 int j = 0;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
                 {
+                    std::cerr << "IN object Clustering" << std::endl;
                     //uncomment this and comment the previous declaration if you only want the "newest" object to be found
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit){
@@ -199,6 +206,7 @@ public:
 
                     cloud_cluster->header = cloud_filtered->header;
                     pcl::toROSMsg(*cloud_cluster, out);
+                    std::cerr << "Before Publisher " << std::endl;
                     c_pub.publish(out);
                     j++;
                 }

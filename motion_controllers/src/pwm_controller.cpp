@@ -172,8 +172,9 @@ int main(int argc, char **argv)
 	ros::Rate loop_rate(controlRate);
 
 	while (ros::ok())
-	{
-		pwm_pub.publish(motorControl());
+    {
+
+        pwm_pub.publish(motorControl()); //
 		ros::spinOnce(); // Run the callbacks.
 		loop_rate.sleep();
 	}
