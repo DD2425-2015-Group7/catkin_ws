@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-double alpha = 20;
+double alpha = 25;
 // The minimum distance allowed between the front sensors and a wall
 float front_limit = 0.25;
 float side_limit = 0.15;
