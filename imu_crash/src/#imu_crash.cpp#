@@ -1,0 +1,39 @@
+#include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
+#include <geometry_msgs/Twist.h>
+#include <math.h>
+
+
+void imuDataCallback(const sensor_msgs::Imu::ConstPtr &msg)
+{
+  // To get the desired linear and angular velocities, we compute the angular velocity of each wheels thanks to the kinematic equations
+  d_leftw = (msg->linear.x - ( (b / 2.0) * msg->angular.z )) / r;
+  d_rightw = (msg->linear.x + ( (b / 2.0) * msg->angular.z )) / r;
+  ROS_INFO("IMU :%f", msg->linear_acceleration.x);
+}
+
+int main(int argc, char **argv)
+{
+
+  ros::init(argc, argv, "imu_");
+
+  ros::NodeHandle n; 
+
+  ros::Subscriber imu_data_sub = n.subscribe("imu/data", 1000, imuDataCallback);
+
+  // ros::Publisher pwm_pub = n.advertise<ras_arduino_msgs::PWM>("kobuki/pwm", 1000);
+
+  ros::Rate loop_rate(10);
+
+  // ras_arduino_msgs::PWM pwm_msg;
+
+  while (ros::ok()) {
+    //pwm_pub.publish(pwm_msg);
+
+    ros::spinOnce();
+    loop_rate.sleep();
+
+  }
+  return 0 ;
+}
+  
