@@ -19,8 +19,9 @@ std::string odomFrame, baseFrame;
 
 std::mutex mtx;
 int encL = 0, encR = 0, deltaEncL = 0, deltaEncR = 0;
-double x = 0.0, y = 0.0, th = 0.0;
+double x = 0.0, y = 0.0, th = th0;
 double vx = 0.0, vy = 0.0, vth = 0.0;
+double thBiasCor = 1.0, distBiasCor = 1.0;
 ros::Time current_time, last_time;
 
 ros::Publisher *odom_pub;
@@ -52,8 +53,10 @@ void poseUpdate(void)
     
     double distance = (double)deltaEncR*encStep + (double)deltaEncL*encStep;
     distance /= 2.0;
+    distance *= distBiasCor;
     double delta_th = ((double)deltaEncR / wheelDist -  (double)deltaEncL  / wheelDist) * encStep;
-    th = th0 + ((double)encR / wheelDist - (double)encL / wheelDist) * encStep;
+    th += delta_th * thBiasCor;
+    //th = th0 + ((double)encR / wheelDist - (double)encL / wheelDist) * encStep;
     th = fmod(th, PI * 2.0);
 
     ROS_DEBUG("delta_th %f th %f dist %f\n", delta_th, th, distance);
@@ -131,6 +134,8 @@ int main(int argc, char **argv)
 	ros::NodeHandle n("/odometry");;
 	
     n.param<std::string>("odometry_frame", odomFrame, "odom");
+    n.param<double>("odometry_distance_bias_correction", distBiasCor, 1.0);
+    n.param<double>("odometry_angle_bias_correction", thBiasCor, 1.0);
     n.param<std::string>("robot_base_link", baseFrame, "base_link");
 
     tf::TransformBroadcaster odom_broadcaster_obj;
