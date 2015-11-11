@@ -1,5 +1,4 @@
 #include "map_tools/MapStorage.h"
-//#include "map_tools/Drawing2D_impl.h"
 
 
 MapStorage::MapStorage(int wc, int hc, double cellSize, int fullyOccupied)
@@ -41,7 +40,6 @@ void MapStorage::addWall(double x0, double y0, double x1, double y1, double thic
     cairo_line_to(cr, x1, y1);
     cairo_stroke(cr);
     cairo_restore (cr);
-    //mapStack.stackLine((int)(x0/cellSz), (int)(y0/cellSz), (int)(x1/cellSz), (int)(y1/cellSz), fullyOccupied, (int)(thickness/cellSz), 0);
 }
 
 void MapStorage::addEllipse(double x, double y, double a, double b, double th)
@@ -58,18 +56,12 @@ void MapStorage::addEllipse(double x, double y, double a, double b, double th)
     cairo_arc (cr, 0., 0., 1., 0., 2 * M_PI);
     cairo_fill (cr);
     cairo_restore (cr);
-    //mapStack.stackFilledEllipse((int)(x/cellSz), (int)(y/cellSz), (int)(a/cellSz), (int)(b/cellSz), th, fullyOccupied);
 }
 
 void MapStorage::renderGrid(void)
 {
     unsigned char *data = cairo_image_surface_get_data (surface);
     map->data.assign(data, data+(map->info.width*map->info.height));
-    /*
-    for(int i = 0; i < mapStack.stack.size(); i++){
-        map->data[mapStack.stack[i].y*map->info.width + mapStack.stack[i].x] = mapStack.stack[i].value;
-    }
-    */
 }
 
 void MapStorage::getMap(nav_msgs::OccupancyGrid& _map)
@@ -77,3 +69,39 @@ void MapStorage::getMap(nav_msgs::OccupancyGrid& _map)
     _map.info = map->info;
     _map.data = map->data;
 }
+
+void MapStorage::loadWalls(std::string fn, double thickness)
+{
+    std::ifstream ifs(fn);
+    assert(ifs.is_open());
+
+    std::string line;
+    int wall_id = 0;
+    while (getline(ifs, line)){
+
+        if (line[0] == '#') {
+            // comment -> skip
+            continue;
+        }
+
+        double max_num = std::numeric_limits<double>::max();
+        double x1= max_num,
+               x2= max_num,
+               y1= max_num,
+               y2= max_num;
+
+        std::istringstream line_stream(line);
+
+        line_stream >> x1 >> y1 >> x2 >> y2;
+
+        if ((x1 == max_num) || ( x2 == max_num) || (y1 == max_num) || (y2 == max_num)){
+            ROS_WARN("Segment error. Skipping line: %s",line.c_str());
+            continue;
+        }
+
+        addWall(x1, y1, x2, y2, thickness);
+        wall_id++;
+    }
+    ROS_INFO_STREAM("Read "<<wall_id<<" walls from map file.");
+}
+

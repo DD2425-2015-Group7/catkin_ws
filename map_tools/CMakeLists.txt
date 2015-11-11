@@ -7,8 +7,10 @@ project(map_tools)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
+  std_msgs
   roscpp
   tf
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
@@ -54,11 +56,11 @@ pkg_search_module(CAIRO REQUIRED cairo)
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+   FILES
+   AddEllipse.srv
+   GetMap.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -68,10 +70,12 @@ pkg_search_module(CAIRO REQUIRED cairo)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   geometry_msgs#   nav_msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+  nav_msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##

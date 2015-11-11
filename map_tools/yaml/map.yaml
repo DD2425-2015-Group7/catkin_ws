@@ -1,5 +1,5 @@
 wall_thickness: 0.025
 obstacle_inflation_radius: 0.16
 cell_size: 0.01
-map_width_cells: 700
-map_height_cells: 700
+map_width_cells: 400
+map_height_cells: 400

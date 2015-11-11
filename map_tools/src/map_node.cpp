@@ -6,18 +6,33 @@
 #include "math.h"
 #include "map_tools/MapStorage.h"
 
-#include <mutex>
+#include "map_tools/AddEllipse.h"
+#include "map_tools/GetMap.h"
 
-#define PI 3.14159
-
-std::string mapFrame;
+std::string mapFrame, wallFile;
 double wallThickness, inflationRadius, cellSize;
 int mapWidth, mapHeight;
 
-ros::Time current_time;
+MapStorage *ms;
 
+ros::Time current_time;
 tf::TransformBroadcaster *tf_broadcaster;
 tf::TransformListener *tf_listener;
+
+bool addEllipse(map_tools::AddEllipse::Request  &req,
+         map_tools::AddEllipse::Response &res)
+{
+    ms->addEllipse(req.x, req.y, req.a, req.b, req.th);
+    ms->renderGrid();
+    return true;
+}
+
+bool getMap(map_tools::GetMap::Request  &req,
+         map_tools::GetMap::Response &res)
+{
+    ms->getMap(res.map);
+    return true;
+}
 
 
 int main(int argc, char **argv)
@@ -36,19 +51,24 @@ int main(int argc, char **argv)
 	ros::NodeHandle n("/map_node");;
 	
     n.param<std::string>("map_frame", mapFrame, "map");
+    n.param<std::string>("wall_file", wallFile, "");
     n.param<double>("wall_thickness", wallThickness, 0.02);
     n.param<double>("obstacle_inflation_radius", inflationRadius, 0.0);
     n.param<double>("cell_size", cellSize, 0.02);
     n.param<int>("map_width_cells", mapWidth, 500);
     n.param<int>("map_height_cells", mapHeight, 500);
 
+    nav_msgs::OccupancyGrid map;
+    map.header.frame_id = mapFrame;
+    map.header.stamp = current_time;
     ros::Publisher map_pub_obj = n.advertise<nav_msgs::OccupancyGrid>("/map", 2);
-    MapStorage ms(mapWidth, mapHeight, cellSize, 100);
+    ms = new MapStorage(mapWidth, mapHeight, cellSize, 100);
 
-    ms.addWall(0.3, 0.2, 1.0, 1.5, wallThickness);
-    ms.addEllipse(2.0, 2.5, 0.4, 0.2, 0.5);
-    ms.renderGrid();
+    ms->loadWalls(wallFile, wallThickness);
+    ms->renderGrid();
 
+    ros::ServiceServer ellipse_srv = n.advertiseService("add_ellipse", addEllipse);
+    ros::ServiceServer map_srv = n.advertiseService("get_map", getMap);
 
     tf::TransformBroadcaster broadcaster_obj;
     tf_broadcaster = &broadcaster_obj;
@@ -57,17 +77,19 @@ int main(int argc, char **argv)
 
     current_time = ros::Time::now();
 
-    const int rate = 1;
+    const int rate = 10, mapRate = 1;
+    int counter = 0;
     ros::Rate loop_rate(rate);
 
-    nav_msgs::OccupancyGrid map;
-    map.header.frame_id = mapFrame;
-    map.header.stamp = current_time;
-    
 	while (ros::ok())
 	{
-        ms.getMap(map);
-        map_pub_obj.publish(map);
+        if(counter < rate/mapRate){
+            counter++;
+        }else{
+            ms->getMap(map);
+            map_pub_obj.publish(map);
+            counter = 0;
+        }
 		ros::spinOnce(); // Run the callbacks.
 		loop_rate.sleep();
 	}
