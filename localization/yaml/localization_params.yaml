@@ -2,6 +2,6 @@ map_frame: "map"
 map_offset_x: 0.0
 map_offset_y: 0.2
 odometry_frame: "odom"
-odometry_distance_bias_correction: 1.0
-odometry_angle_bias_correction: 1.0
+odometry_distance_bias_correction: 1.02
+odometry_angle_bias_correction: 0.986
 robot_base_link: "base_link"
