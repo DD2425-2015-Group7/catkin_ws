@@ -8,7 +8,7 @@
 #include <sstream>
 
 // Loop rate
-int loop_rate = 100;
+int loop_rate = 10;
 /* IMU data */
 // Linear acceleration of y axis (y is the axis to go forward with the robot, in the IMU reference system, ie x in the robot reference system)
 double imu_lin_acc_x = 0.0;
@@ -31,29 +31,29 @@ int count_threshold = 250;
 int count = 0;
 
 // Limit absolute values to use to say that we want to move (from cmd_vel topic)
-double lin_limit = 1.0;
-double ang_limit = 0.5;
+double lin_limit = 0.05;
+double ang_limit = 0.;
 
 // Thresholds used to detect that the robot is stuck
 double lin_acc_threshold = 0.25;
 double ang_vel_threshold = 1.0;
 
-void imuDataCallback(const sensor_msgs::Imu::ConstPtr &msg) {
+void imuDataCallback(const sensor_msgs::Imu::ConstPtr &imu) {
   start_imu = true;
-  imu_lin_acc_x = msg->linear_acceleration.y;
+  imu_lin_acc_x = imu->linear_acceleration.y;
   if (fabs(imu_lin_acc_x) < lin_acc_threshold) {
     count++;
   } else {
     count = 0;
   }
 
-  imu_ang_vel_z= msg->angular_velocity.z;
+  imu_ang_vel_z= imu->angular_velocity.z;
 }
 
-void velocityCallback(const geometry_msgs::Twist::ConstPtr &msg) {
+void velocityCallback(const geometry_msgs::Twist::ConstPtr &vel) {
   start_vel = true;
-  lin_vel_x = msg->linear.x;
-  ang_vel_z = msg->angular.z;
+  lin_vel_x = vel->linear.x;
+  ang_vel_z = vel->angular.z;
 }
 
 
@@ -69,26 +69,26 @@ int main(int argc, char **argv)
   ros::Publisher crash_pub = n.advertise<std_msgs::String>("crash", 1000);
 
   /* Subscription to the velocity node */
-  ros::Subscriber twist_sub = n.subscribe("/cmd_vel", 1000, velocityCallback);
+  ros::Subscriber twist_sub = n.subscribe("cmd_vel", 1000, velocityCallback);
 
   ros::Rate loop_rate(loop_rate);
-
-  ROS_INFO("loop_rate");
 
   std_msgs::String espeak_msg;
 
   while (ros::ok()) {
-    std::cout << "Count: " << count << std::endl;
-    if (start_imu || start_vel) {
+    std::cout << "COUNT " << count << std::endl;
+    std::cout << "lin_vel_x " << lin_vel_x << std::endl;
+    if (start_imu && start_vel) {
       if (lin_vel_x > lin_limit) {
 	if (count > count_threshold) {
 	  ROS_INFO("LINEAR CRASH");
-	  count = count_threshold;
+	  count = count_threshold + 1;
 	  crash_lin == true;
 	  espeak_msg.data = "LINEAR CRASH";
 	  espeak_pub.publish(espeak_msg);
 	  crash_pub.publish(espeak_msg);
 	} else {
+	  ROS_INFO("HAMD");
 	  crash_lin = false;
 	}
       }
@@ -96,20 +96,20 @@ int main(int argc, char **argv)
 
       if (ang_vel_z > ang_limit) {
 	if (fabs(imu_ang_vel_z) < ang_vel_threshold) {
+	  ROS_INFO("ANGULAR CRASH");
+          espeak_msg.data = "ANGULAR CRASH";
+          espeak_pub.publish(espeak_msg);
+          crash_pub.publish(espeak_msg);
 	  crash_ang = true;
 	} else {
 	  crash_ang = false;
-	  ROS_INFO("ANGULAR CRASH");
-	  espeak_msg.data = "ANGULAR CRASH";
-	  espeak_pub.publish(espeak_msg);
-	  crash_pub.publish(espeak_msg);
 	}
       }
     }
-
     ros::spinOnce();
-    loop_rate.sleep();
+    //    loop_rate.sleep();
   }
+  ROS_INFO("RETURRRRRN");
 
   return 0 ;
 }
