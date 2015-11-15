@@ -4,6 +4,7 @@
 #include "tf/transform_listener.h"
 #include "tf/transform_broadcaster.h"
 #include "math.h"
+#include "localization/MonteCarlo.h"
 
 #include <mutex>
 
@@ -21,6 +22,9 @@ ros::Time current_time;
 
 tf::TransformBroadcaster *tf_broadcaster;
 tf::TransformListener *tf_listener;
+
+MonteCarlo *mc;
+OdometryModel *om;
 
 void updateOdom(const nav_msgs::Odometry::ConstPtr& msg)
 {
@@ -75,7 +79,14 @@ int main(int argc, char **argv)
     n.param<std::string>("map_frame", mapFrame, "map");
     n.param<double>("map_offset_x", coords.x0, 0.0);
     n.param<double>("map_offset_y", coords.y0, 0.0);
+    
+    double odom_a1, odom_a2, odom_a3, odom_a4;
     n.param<std::string>("odometry_frame", odomFrame, "odom");
+    n.param<double>("odometry_model_a1", odom_a1, 0.05);
+    n.param<double>("odometry_model_a2", odom_a2, 0.01);
+    n.param<double>("odometry_model_a3", odom_a3, 0.03);
+    n.param<double>("odometry_model_a4", odom_a4, 0.01);
+    
     n.param<std::string>("robot_base_link", baseFrame, "base_link");
 
     tf::TransformBroadcaster broadcaster_obj;
@@ -84,6 +95,13 @@ int main(int argc, char **argv)
     tf_listener = &listener_obj;
     
 	ros::Subscriber odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 200, updateOdom);
+
+    om = new OdometryModel(odom_a1, odom_a2, odom_a3, odom_a4);
+    mc = new MonteCarlo(om);
+    if(mc->test())
+        ROS_INFO("MCL test passed.");
+    else
+        ROS_INFO("MCL test failed.");
 
     current_time = ros::Time::now();
 

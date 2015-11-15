@@ -102,7 +102,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
+   INCLUDE_DIRS include
 #  LIBRARIES localization
 #  CATKIN_DEPENDS geometry_msgs ras_arduino_msgs roscpp
 #  DEPENDS system_lib
@@ -116,7 +116,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+include_directories(include)
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
@@ -138,7 +138,7 @@ target_link_libraries(odometry
    ${catkin_LIBRARIES}
 )
 
-add_executable(mcl_node src/mcl_node.cpp)
+add_executable(mcl_node src/mcl_node.cpp src/MonteCarlo.cpp src/OdometryModel.cpp)
 add_dependencies(mcl_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(mcl_node
    ${catkin_LIBRARIES}
