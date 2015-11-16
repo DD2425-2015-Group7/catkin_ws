@@ -1,9 +1,11 @@
 #include "localization/MonteCarlo.h"
 
-MonteCarlo::MonteCarlo(OdometryModel *om)
+MonteCarlo::MonteCarlo(OdometryModel *om, const int nParticles)
 {
     this->om = om;
+    this->nParticles = nParticles;
     this->first = true;
+    srand (time(NULL));
 }
 
 void MonteCarlo::run(const struct PoseState odom)
@@ -12,6 +14,27 @@ void MonteCarlo::run(const struct PoseState odom)
     sensorUpdate();
     sample();
     avgAndStd();
+}
+
+void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
+{
+    double r, th;
+    double r1, r2;
+    struct PoseState rs;
+    rs.set(0.0);
+    belief.clear();
+    for(int i=0; i < nParticles; i++){
+        th = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
+        r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+        r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+        r = coneRadius * r1 * r2;
+        rs.x = r*cos(th);
+        rs.y = r*sin(th);
+        r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+        r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+        rs.yaw = yawVar * r1 * r2;
+        belief.push_back(rs);
+    }
 }
 
 void MonteCarlo::motionUpdate(const struct PoseState odom)
@@ -24,13 +47,19 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
     om->setOdometry(this->odom0, odom);
     for(int i = 0; i < belief.size(); i++){
         belief[i].s = om->sample(belief[i].s);
+        //TODO: repeat unless consistent with the inflated map.
     }
     this->odom0 = odom;
 }
 
 void MonteCarlo::sensorUpdate(void)
 {
-    //TODO
+    //TODO: use the likelihood field
+    //Receive sensor readings in the map frame. (x,y)
+    //Precompute distances to the closest obstacle for each grid cell. (nearest neightbour)
+    //Model unexplored free space as unknown -> sensor reading has const. prob. 1/zmax
+    //Probablility calculation based on page 155. or extended symmetric algorithm? (page 157)
+    //Summary 166
 }
 
 void MonteCarlo::sample(void)
@@ -64,6 +93,11 @@ struct PoseState MonteCarlo::getState(void)
 struct PoseState MonteCarlo::getStd(void)
 {
     return this->stateStd;
+}
+
+std::vector<MonteCarlo::StateW> MonteCarlo::getParticles(void)
+{
+    return this->belief;
 }
 
 bool MonteCarlo::test(void)

@@ -13,21 +13,6 @@
 
 class MonteCarlo{
     public:
-        MonteCarlo(OdometryModel *om);
-        //int addSensor(void);
-        //void removeSensors(void);
-        //bool removeSensor(int index);
-        //void initRandom(void);
-        //void init(struct State pose, struct State std);
-        void run(const struct PoseState odom);
-        struct PoseState getState(void);
-        struct PoseState getStd(void);
-
-        bool test(void);
-    
-    private:
-        bool first;
-        std::mutex mtx;
         struct StateW{
             struct PoseState s;
             double weight;
@@ -36,12 +21,29 @@ class MonteCarlo{
             {
             }
         };
+        MonteCarlo(OdometryModel *om, const int nParticles);
+        //int addSensor(void);
+        //void removeSensors(void);
+        //bool removeSensor(int index);
+        //void initRandom(void);
+        void init(struct PoseState pose, double coneRadius, double yawVar);
+        void run(const struct PoseState odom);
+        struct PoseState getState(void);
+        struct PoseState getStd(void);
+        std::vector<struct StateW> getParticles(void);
+
+        bool test(void);
+    
+    private:
+        bool first;
+        std::mutex mtx;
+        
         struct PoseState stateAvg;
         struct PoseState stateStd;
         std::vector<struct StateW> belief;
         OdometryModel *om;
         struct PoseState odom0;
-        
+        int nParticles;
         
         void motionUpdate(const struct PoseState odom);
         void sensorUpdate(void);
