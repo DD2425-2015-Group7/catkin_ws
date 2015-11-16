@@ -21,7 +21,7 @@ class MonteCarlo{
             {
             }
         };
-        MonteCarlo(OdometryModel *om, const int nParticles);
+        MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const int nParticles);
         //int addSensor(void);
         //void removeSensors(void);
         //bool removeSensor(int index);
@@ -44,6 +44,7 @@ class MonteCarlo{
         OdometryModel *om;
         struct PoseState odom0;
         int nParticles;
+        bool (*isFree)(double, double);
         
         void motionUpdate(const struct PoseState odom);
         void sensorUpdate(void);
