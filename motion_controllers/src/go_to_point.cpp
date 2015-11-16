@@ -35,8 +35,9 @@ int main(int argc, char *argv[])
 
     ros::Subscriber sub_posi = handle.subscribe("/path_point", 1000, setPosition);
     
-    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
 
+    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
+    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
     geometry_msgs::Twist t;
     ros::Rate loopRate(10);
 

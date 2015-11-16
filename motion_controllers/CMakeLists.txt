@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   ras_arduino_msgs
   roscpp
   std_msgs
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -178,6 +179,18 @@ add_dependencies(path ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARG
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(path
+   ${catkin_LIBRARIES}
+)
+
+## Declare a C++ executable
+add_executable(DifferentialDrive src/DifferentialDrive.cpp)
+
+## Add cmake target dependencies of the executable
+## same as for the library above
+add_dependencies(DifferentialDrive ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+## Specify libraries to link a library or executable target against
+target_link_libraries(DifferentialDrive
    ${catkin_LIBRARIES}
 )
  
