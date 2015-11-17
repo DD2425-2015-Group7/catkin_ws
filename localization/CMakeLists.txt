@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf
   ras_arduino_msgs
   roscpp
+  map_tools
 )
 
 ## System dependencies are found with CMake's conventions

@@ -30,10 +30,20 @@ bool addEllipse(map_tools::AddEllipse::Request  &req,
 bool getMap(map_tools::GetMap::Request  &req,
          map_tools::GetMap::Response &res)
 {
-    ms->getMap(res.map);
-    return true;
+    if(req.type.data.compare("default") == 0){
+        ms->getMap(res.map);
+        return true;
+    }
+    if(req.type.data.compare("inflated") == 0){
+        ms->getMap(res.map); //TODO
+        return true;
+    }
+    if(req.type.data.compare("distance") == 0){
+        ms->getMap(res.map); //TODO
+        return true;
+    }
+    return false;
 }
-
 
 int main(int argc, char **argv)
 {

@@ -1,9 +1,12 @@
 #include "localization/MonteCarlo.h"
 
-MonteCarlo::MonteCarlo(OdometryModel *om)
+MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const int nParticles)
 {
     this->om = om;
+    this->nParticles = nParticles;
     this->first = true;
+    this->isFree = isFree;
+    srand (time(NULL));
 }
 
 void MonteCarlo::run(const struct PoseState odom)
@@ -14,6 +17,30 @@ void MonteCarlo::run(const struct PoseState odom)
     avgAndStd();
 }
 
+void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
+{
+    double r, th;
+    double r1, r2;
+    struct PoseState rs;
+    rs.set(0.0);
+    belief.clear();
+    for(int i=0; i < nParticles; i++){
+        do{
+            th = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
+            r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+            r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+            r = coneRadius * r1 * r2;
+            rs.x = r*cos(th);
+            rs.y = r*sin(th);
+            rs = rs + pose;
+        }while(!isFree(rs.x, rs.y));
+        r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+        r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+        rs.yaw += yawVar * r1 * r2;
+        belief.push_back(rs);
+    }
+}
+
 void MonteCarlo::motionUpdate(const struct PoseState odom)
 {
     if(first){
@@ -22,15 +49,31 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
         return;
     }
     om->setOdometry(this->odom0, odom);
+    struct PoseState st;
     for(int i = 0; i < belief.size(); i++){
-        belief[i].s = om->sample(belief[i].s);
+        int count = 0;
+        do{
+            st = om->sample(belief[i].s);
+            count++;
+            if(count > 10){
+                //If hitting a wall, keep the old particle. The move is not possible.
+                st = belief[i].s;
+                break;
+            }
+        }while(!isFree(st.x, st.y));
+        belief[i].s = st;
     }
     this->odom0 = odom;
 }
 
 void MonteCarlo::sensorUpdate(void)
 {
-    //TODO
+    //TODO: use the likelihood field
+    //Receive sensor readings in the map frame. (x,y)
+    //Precompute distances to the closest obstacle for each grid cell. (nearest neightbour)
+    //Model unexplored free space as unknown -> sensor reading has const. prob. 1/zmax
+    //Probablility calculation based on page 155. or extended symmetric algorithm? (page 157)
+    //Summary 166
 }
 
 void MonteCarlo::sample(void)
@@ -38,6 +81,7 @@ void MonteCarlo::sample(void)
     //TODO
     //Sample only when high weight variance.
     //Low-variance sampler. Page 98.
+    //Further on sampling hacks, random particle MCL: page 217.
 }
 
 void MonteCarlo::avgAndStd(void)
@@ -64,6 +108,11 @@ struct PoseState MonteCarlo::getState(void)
 struct PoseState MonteCarlo::getStd(void)
 {
     return this->stateStd;
+}
+
+std::vector<MonteCarlo::StateW> MonteCarlo::getParticles(void)
+{
+    return this->belief;
 }
 
 bool MonteCarlo::test(void)
