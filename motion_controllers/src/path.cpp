@@ -1,4 +1,4 @@
-    #include "ros/ros.h"
+#include "ros/ros.h"
 #include "nav_msgs/Path.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Point.h"
@@ -17,11 +17,27 @@ int main(int argc, char **argv)
   ros::Rate loop_rate(10);
   geometry_msgs::PoseStamped p1,p2,p3;
   //geometry_msgs::Point po1;
-  p1.pose.position.x = 1.0;
+  p1.pose.position.x = 2.2;
   p1.pose.position.y = 0.2;
+  p1.pose.orientation.x = 0;
+  p1.pose.orientation.y = 0;
+  p1.pose.orientation.z = 0;
+  p1.pose.orientation.w = 1;
 
-  p2.pose.position.x = 2.3;
-  p2.pose.position.y = 2;
+  p2.pose.position.x = 2.2;
+  p2.pose.position.y = 0.35;
+  p2.pose.orientation.x = 0;
+  p2.pose.orientation.y = 0;
+  p2.pose.orientation.z = 0;
+  p2.pose.orientation.w = 1;
+
+
+  p3.pose.position.x = 1.7;
+  p3.pose.position.y = 0.3;
+  p3.pose.orientation.x = 0;
+  p3.pose.orientation.y = 0;
+  p3.pose.orientation.z = 0;
+  p3.pose.orientation.w = 1;
 
 //  p3.pose.position.x = 2.0;
 //  p3.pose.position.y = 0.65;
@@ -30,7 +46,7 @@ int main(int argc, char **argv)
 
   path.poses.push_back(p1);
   path.poses.push_back(p2);
-  //path.poses.push_back(p3);
+  path.poses.push_back(p3);
 
   path.header.stamp = ros::Time::now();
   path.header.frame_id = "map";
