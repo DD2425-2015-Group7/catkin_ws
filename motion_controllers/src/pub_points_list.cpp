@@ -5,6 +5,7 @@
 #include "geometry_msgs/Twist.h"
 #include "nav_msgs/Path.h"
 #include "nav_msgs/Odometry.h"
+#include "std_msgs/String.h"
 
 #include <tf/transform_listener.h>
 
@@ -15,12 +16,14 @@
 double closeEnough = 0.05;
 
 ros::Publisher *pub_pose;
+ros::Publisher *pub_espeak;
 nav_msgs::Path path;
 
 tf::TransformListener *tf_listener;
 
 std::string TargetFrameName;
 geometry_msgs::PoseStamped goalPose;
+std_msgs::String str;
 
 void setPath(const nav_msgs::Path::ConstPtr& msg)
 {
@@ -42,6 +45,9 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
   //ROS_INFO("calculatePosition");
   if(nextPoint > path.poses.size() - 1)
   {
+
+      str.data = "destination reached";
+      pub_espeak->publish(str);
     ROS_INFO("Destination reached");
     //set velocity to zero
     goalPose.pose.position.x = 0.0;
@@ -79,7 +85,9 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
     goalPose.pose.position.y = 0.0;
 
     nextPoint++;
-
+    // rostopic pub /espeak/string std_msgs/String "Hi"
+    str.data = "go to next point";
+    pub_espeak->publish(str);
     //ROS_INFO("NextPoint");
    }
   }
@@ -100,43 +108,22 @@ int main(int argc, char *argv[])
     //ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/path",1000,setPath);
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("/odom",1000,calculatePosition);
     ros::Publisher pub_pose_obj = handle.advertise<geometry_msgs::Pose>("/path_pose", 1000);
+    ros::Publisher pub_espeak_obj = handle.advertise<std_msgs::String>("/espeak/string",1000);
+
+
+    pub_espeak = &pub_espeak_obj;
     pub_pose = &pub_pose_obj;
 
     TargetFrameName = "/base_link";
 
     tf_listener = new tf::TransformListener();
 
-    /*
-    ros::Publisher test_Pub = handle.advertise<geometry_msgs::Pose>("/path_pose_test", 1000);
-    geometry_msgs::Pose testPose;
-    testPose.position.y = 0.01;
-    testPose.position.x = 1;
-    testPose.orientation.x = 0;
-    testPose.orientation.y = 0;
-    testPose.orientation.z = 0;
-    testPose.orientation.w = 1;
-    */
 
     ros::Rate loopRate(10);
 
-    int count = 0;
+
     while(ros::ok())
     {
-        /*
-        if(count < 50)
-        {
-            test_Pub.publish(testPose);
-        }
-        else
-        {
-            testPose.position.x = 0;
-            testPose.position.y = 1 ;
-            test_Pub.publish(testPose);
-        }
-
-        count++;
-        */
-
 
         ros::spinOnce();
         loopRate.sleep();

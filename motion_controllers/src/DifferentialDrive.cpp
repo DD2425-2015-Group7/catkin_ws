@@ -13,7 +13,7 @@ double distance;
 double safetyDistance = 0;
 double angle;
 
-double safetyAngle = 0.1;
+double safetyAngle = 0.05;
 
 double MAX_LINEAR_VEL = 0.2;
 double MAX_ANGULAR_VEL = 1.5;
@@ -34,14 +34,8 @@ States state;
 
 void setPosition(const geometry_msgs::Pose::ConstPtr& msg)
 {
-    //distance = sqrt(msg.get()->position.x * msg.get()->position.x + msg.get()->position.y * msg.get()->position.y);
-    //ROS_INFO("Distance :%f",distance);
-
     //As we use the tf package to tansform the point, so the distance will be just the x value.
     distance = msg.get()->position.x;
-
-    //orientati = tf::getYaw(msg.get()->orientation);
-    //orientati = msg.get()->orientation.z;
 
     if(msg.get()->position.y > 0.001 ||  msg.get()->position.y < -0.001)
     {
@@ -96,8 +90,8 @@ int main(int argc, char *argv[])
     ros::NodeHandle handle;
     ros::Subscriber sub_posi = handle.subscribe("/path_pose", 1000, setPosition);
 
-    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
-    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
+    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
+    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
     geometry_msgs::Twist t;
     ros::Rate loopRate(10);
 
@@ -110,47 +104,37 @@ int main(int argc, char *argv[])
         case(ROTATE_RIGHT):
             //rotate to the right direction
 
-
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
+            //t.angular.z = -MAX_ANGULAR_VEL;
+            t.linear.x = 0;
             t.angular.z = smoothUpdateVelocity(t.angular.z, -MAX_ANGULAR_VEL,0.05);
             std::cerr<< "Rotate to Right" <<std::endl;
-
-
-            t.linear.x = 0;
-//            t.angular.z = -MAX_ANGULAR_VEL;
             break;
         case(ROTATE_LEFT):
             //rotate to the left direction
 
-
+            //t.angular.z = MAX_ANGULAR_VEL;
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
+            t.linear.x = 0;
             t.angular.z = smoothUpdateVelocity(t.angular.z, MAX_ANGULAR_VEL,0.05);
             std::cerr<< "Rotate to Left" <<std::endl;
-
-
-            t.linear.x = 0;
-//            t.angular.z = MAX_ANGULAR_VEL;
-
             break;
         case(FORWORD):
             //go forword
 
-            t.linear.x = smoothUpdateVelocity(t.linear.x,MAX_LINEAR_VEL,0.05);
+            //t.linear.x = MAX_LINEAR_VEL;
             //t.linear.z = smoothUpdateVelocity(t.angular.z,0,0.1);
-            std::cerr<< "Move Forward" <<std::endl;
-
-
-//            t.linear.x = MAX_LINEAR_VEL;
             t.angular.z = 0;
-
+            t.linear.x = smoothUpdateVelocity(t.linear.x,MAX_LINEAR_VEL,0.05);
+            std::cerr<< "Move Forward" <<std::endl;
             break;
         case(STOP):
+            //stop
             t.linear.x = 0;
             t.angular.z = 0;
             std::cerr<< "Stop" <<std::endl;
             break;
         }
-
 
         pub_twist.publish(t);
         ros::spinOnce();
