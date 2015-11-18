@@ -31,15 +31,15 @@ bool getMap(map_tools::GetMap::Request  &req,
          map_tools::GetMap::Response &res)
 {
     if(req.type.data.compare("default") == 0){
-        ms->getMap(res.map);
+        ms->getMap("default", res.map);
         return true;
     }
     if(req.type.data.compare("inflated") == 0){
-        ms->getMap(res.map); //TODO
+        ms->getMap("inflated", res.map);
         return true;
     }
     if(req.type.data.compare("distance") == 0){
-        ms->getMap(res.map); //TODO
+        ms->getMap("distance", res.map);
         return true;
     }
     return false;
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     map.header.frame_id = mapFrame;
     map.header.stamp = current_time;
     ros::Publisher map_pub_obj = n.advertise<nav_msgs::OccupancyGrid>("/map", 2);
-    ms = new MapStorage(mapWidth, mapHeight, cellSize, 100);
+    ms = new MapStorage(mapWidth, mapHeight, cellSize, 100, inflationRadius);
 
     ms->loadWalls(wallFile, wallThickness);
     ms->renderGrid();
@@ -96,7 +96,7 @@ int main(int argc, char **argv)
         if(counter < rate/mapRate){
             counter++;
         }else{
-            ms->getMap(map);
+            ms->getMap("inflated", map);
             map_pub_obj.publish(map);
             counter = 0;
         }
