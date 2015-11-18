@@ -13,15 +13,14 @@ double distance;
 double safetyDistance = 0;
 double angle;
 
-double safetyAngle = 0.05;
+double safetyAngle = 0.07;
 
 double MAX_LINEAR_VEL = 0.2;
-double MAX_ANGULAR_VEL = 1.5;
+double MAX_ANGULAR_VEL = 1;
 
 
 ros::Publisher *pub_twist;
 double orientati;
-
 enum States
 {
     STOP,
@@ -107,7 +106,7 @@ int main(int argc, char *argv[])
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
             //t.angular.z = -MAX_ANGULAR_VEL;
             t.linear.x = 0;
-            t.angular.z = smoothUpdateVelocity(t.angular.z, -MAX_ANGULAR_VEL,0.05);
+            t.angular.z = smoothUpdateVelocity(t.angular.z, -MAX_ANGULAR_VEL,0.025);
             std::cerr<< "Rotate to Right" <<std::endl;
             break;
         case(ROTATE_LEFT):
@@ -116,7 +115,7 @@ int main(int argc, char *argv[])
             //t.angular.z = MAX_ANGULAR_VEL;
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
             t.linear.x = 0;
-            t.angular.z = smoothUpdateVelocity(t.angular.z, MAX_ANGULAR_VEL,0.05);
+            t.angular.z = smoothUpdateVelocity(t.angular.z, MAX_ANGULAR_VEL,0.025);
             std::cerr<< "Rotate to Left" <<std::endl;
             break;
         case(FORWORD):
