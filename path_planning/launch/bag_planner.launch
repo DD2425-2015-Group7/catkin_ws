@@ -3,7 +3,7 @@
   <master auto="start"/>
    
   <node pkg="path_planning" type="path_planner" respawn="false" name="path_planner" output="screen">
-    <param name="bag_file" value="$(find path_planning)/data/small_maze_pose_seq1.bag" />
+    <param name="bag_file" value="$(find path_planning)/data/simple_path.bag" />
   </node>
   
 </launch> 

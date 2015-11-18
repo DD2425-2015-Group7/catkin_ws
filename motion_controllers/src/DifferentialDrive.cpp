@@ -13,7 +13,7 @@ double distance;
 double safetyDistance = 0;
 double angle;
 
-double safetyAngle = 0.07;
+double safetyAngle = 0.2;
 
 double MAX_LINEAR_VEL = 0.2;
 double MAX_ANGULAR_VEL = 1;
@@ -88,6 +88,7 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "DifferentialDrive");
     ros::NodeHandle handle;
     ros::Subscriber sub_posi = handle.subscribe("/path_pose", 1000, setPosition);
+    //ros::Subscriber sub_posi = handle.subscribe("path", 1000, setPosition);
 
     //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
     ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
@@ -123,7 +124,9 @@ int main(int argc, char *argv[])
 
             //t.linear.x = MAX_LINEAR_VEL;
             //t.linear.z = smoothUpdateVelocity(t.angular.z,0,0.1);
-            t.angular.z = 0;
+             t.angular.z = 2 * angle;
+
+            //t.angular.z = 0;
             t.linear.x = smoothUpdateVelocity(t.linear.x,MAX_LINEAR_VEL,0.05);
             std::cerr<< "Move Forward" <<std::endl;
             break;

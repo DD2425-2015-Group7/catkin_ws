@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 
   ros::NodeHandle n;
 
-  ros::Publisher path_pub = n.advertise<nav_msgs::Path>("path", 1000);
+  ros::Publisher path_pub = n.advertise<nav_msgs::Path>("/path", 1000);
 
   ros::Rate loop_rate(10);
   geometry_msgs::PoseStamped p1,p2,p3;
