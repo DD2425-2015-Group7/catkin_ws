@@ -96,28 +96,42 @@ int MapStorage::nnDist(int xi, int yi)
     if(map->data[yi*w + xi] >= fullyOccupied)
         return 0;
     const int maxLevel = 50;
-    int level = 1, dist = maxLevel, x = xi, y = yi;
+    int level = 1, dist = maxLevel, x = xi, y = yi, d;
     while(level<maxLevel){
         y = max(yi - level, 0); 
         for(x = max(xi-level, 0); x < min(xi+level, w); x++){
-            if(map->data[y*w + x] >= fullyOccupied)
-                return boundedDist(x-xi, y-yi, maxLevel);
+            if(map->data[y*w + x] >= fullyOccupied){
+                d = boundedDist(x-xi, y-yi, maxLevel);
+                if(d<dist)
+                    dist = d;
+            }
         }
         y = min(yi + level, h); 
         for(x = max(xi-level, 0); x < min(xi+level, w); x++){
-            if(map->data[y*w + x] >= fullyOccupied)
-                return boundedDist(x-xi, y-yi, maxLevel);
+            if(map->data[y*w + x] >= fullyOccupied){
+                d = boundedDist(x-xi, y-yi, maxLevel);
+                if(d<dist)
+                    dist = d;
+            }
         }
         x = max(xi - level, 0); 
         for(y = max(yi-level, 0); y < min(yi+level, h); y++){
-            if(map->data[y*w + x] >= fullyOccupied)
-                return boundedDist(x-xi, y-yi, maxLevel);
+            if(map->data[y*w + x] >= fullyOccupied){
+                d = boundedDist(x-xi, y-yi, maxLevel);
+                if(d<dist)
+                    dist = d;
+            }
         }
         x = min(xi + level, w); 
         for(y = max(yi-level, 0); y < min(yi+level, h); y++){
-            if(map->data[y*w + x] >= fullyOccupied)
-                return boundedDist(x-xi, y-yi, maxLevel);
+            if(map->data[y*w + x] >= fullyOccupied){
+                d = boundedDist(x-xi, y-yi, maxLevel);
+                if(d<dist)
+                    dist = d;
+            }
         }
+        if(dist <= level)
+            return dist;
         level++;
     }
     return maxLevel;
