@@ -1,20 +1,25 @@
 #include "localization/MonteCarlo.h"
 
-MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const int nParticles)
+MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const int nParticles, double minDelta)
 {
     this->om = om;
     this->nParticles = nParticles;
+    this->minDelta = minDelta;
     this->first = true;
     this->isFree = isFree;
     srand (time(NULL));
 }
 
-void MonteCarlo::run(const struct PoseState odom)
+bool MonteCarlo::run(struct PoseState odom)
 {
+    // Do not do anything when we are not moving.
+    if(odom.magnitude() < minDelta)
+        return false;
     motionUpdate(odom);
     sensorUpdate();
     sample();
     avgAndStd();
+    return true;
 }
 
 void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
@@ -68,20 +73,41 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
 
 void MonteCarlo::sensorUpdate(void)
 {
-    //TODO: use the likelihood field
-    //Receive sensor readings in the map frame. (x,y)
-    //Precompute distances to the closest obstacle for each grid cell. (nearest neightbour)
-    //Model unexplored free space as unknown -> sensor reading has const. prob. 1/zmax
-    //Probablility calculation based on page 155. or extended symmetric algorithm? (page 157)
-    //Summary 166
+    double wsum = 0.0;
+    for(int j = 0; j < belief.size(); j++){
+        belief[j].weight = 1;
+        for(int i = 0; i < sensors.size(); i++){
+            belief[j].weight *= sensors[i]->likelihood(belief[j].s);
+        }
+        wsum += belief[j].weight;
+    }
+    for(int j = 0; j < belief.size(); j++)
+        belief[j].weight = belief[j].weight / wsum;
 }
 
 void MonteCarlo::sample(void)
 {
-    //TODO
     //Sample only when high weight variance.
     //Low-variance sampler. Page 98.
     //Further on sampling hacks, random particle MCL: page 217.
+    //The particle filter: 90.
+    if(belief.size()<1)
+        return;
+    std::vector<struct StateW> nb;
+    double r = ((double)rand()/(double)(RAND_MAX))/((double)belief.size());
+    int sz, i = 0;
+    double c = belief[0].weight;
+    sz = belief.size();
+    for(int m = 0; m < sz; m++){
+        double u = r + m/((double)sz);
+        while(u > c){
+            i = i + 1;
+            assert(i<sz);
+            c = c + belief[i].weight;
+        }
+        nb.push_back(belief[i]);
+    }
+    belief = nb;
 }
 
 void MonteCarlo::avgAndStd(void)
@@ -113,6 +139,16 @@ struct PoseState MonteCarlo::getStd(void)
 std::vector<MonteCarlo::StateW> MonteCarlo::getParticles(void)
 {
     return this->belief;
+}
+
+void MonteCarlo::addSensor(SensorInterface* si)
+{
+    sensors.push_back(si);
+}
+
+void MonteCarlo::removeSensors(void)
+{
+    sensors.clear();
 }
 
 bool MonteCarlo::test(void)
