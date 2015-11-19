@@ -13,10 +13,10 @@ double distance;
 double safetyDistance = 0;
 double angle;
 
-double safetyAngle = 0.2;
+double safetyAngle = 0.4;
 
 double MAX_LINEAR_VEL = 0.2;
-double MAX_ANGULAR_VEL = 1;
+double MAX_ANGULAR_VEL = 1.5;
 
 
 ros::Publisher *pub_twist;
@@ -90,8 +90,8 @@ int main(int argc, char *argv[])
     ros::Subscriber sub_posi = handle.subscribe("/path_pose", 1000, setPosition);
     //ros::Subscriber sub_posi = handle.subscribe("path", 1000, setPosition);
 
-    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
-    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
+    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
+    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
     geometry_msgs::Twist t;
     ros::Rate loopRate(10);
 
@@ -107,18 +107,45 @@ int main(int argc, char *argv[])
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
             //t.angular.z = -MAX_ANGULAR_VEL;
             t.linear.x = 0;
-            t.angular.z = smoothUpdateVelocity(t.angular.z, -MAX_ANGULAR_VEL,0.025);
+            //t.angular.z = smoothUpdateVelocity(t.angular.z, -MAX_ANGULAR_VEL,0.025);
             std::cerr<< "Rotate to Right" <<std::endl;
+
+            t.angular.z = 4 * angle;
+
+//            if(t.angular.z > -1)
+//            {
+//                t.angular.z = -1;
+//            }
+
+            if(t.angular.z < -MAX_ANGULAR_VEL)
+            {
+               t.angular.z = -MAX_ANGULAR_VEL;
+            }
+
             break;
         case(ROTATE_LEFT):
             //rotate to the left direction
 
             //t.angular.z = MAX_ANGULAR_VEL;
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
+
+            t.angular.z = 4 * angle;
+//            if(t.angular.z < 1)
+//            {
+//                t.angular.z = 1;
+//            }
+
+            if(t.angular.z > MAX_ANGULAR_VEL)
+            {
+                t.angular.z = MAX_ANGULAR_VEL;
+            }
+
             t.linear.x = 0;
-            t.angular.z = smoothUpdateVelocity(t.angular.z, MAX_ANGULAR_VEL,0.025);
+            //t.angular.z = smoothUpdateVelocity(t.angular.z, MAX_ANGULAR_VEL,0.025);
             std::cerr<< "Rotate to Left" <<std::endl;
             break;
+
+
         case(FORWORD):
             //go forword
 
