@@ -1,0 +1,74 @@
+<?xml version="1.0"?>
+<robot xmlns:controller="http://playerstage.sourceforge.net/gazebo/xmlschema/#controller"
+    xmlns:interface="http://playerstage.sourceforge.net/gazebo/xmlschema/#interface"
+    xmlns:sensor="http://playerstage.sourceforge.net/gazebo/xmlschema/#sensor"
+    xmlns:xacro="http://ros.org/wiki/xacro" name="foubot">
+  
+    <link name="base_link"/>
+    <link name="base_plate"/>
+    <link name="base_plate_tip"/>
+    <link name="cam_link"/>
+    <link name="imu_link"/>
+    <link name="ir1_link"/>
+    <link name="ir2_link"/>
+    <link name="ir3_link"/>
+    <link name="ir4_link"/>
+    <link name="ir5_link"/>
+    <link name="ir6_link"/>
+    
+    <joint name="base_joint" type="fixed">
+      <parent link="base_link" />
+      <child link="base_plate" />
+      <origin rpy="0 0 0" xyz="0 0 0.133"/>
+    </joint>
+    
+    <joint name="tip_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="base_plate_tip" />
+      <origin rpy="0 0 0" xyz="0.13 0 0"/>
+    </joint>
+    
+    <joint name="cam_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="cam_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    
+    <joint name="imu_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="imu_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    
+    <joint name="ir1_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="ir1_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    <joint name="ir2_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="ir2_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    <joint name="ir3_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="ir3_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    <joint name="ir4_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="ir4_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    <joint name="ir5_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="ir5_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    <joint name="ir6_joint" type="fixed">
+      <parent link="base_plate" />
+      <child link="ir6_link" />
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+    </joint>
+    
+</robot>

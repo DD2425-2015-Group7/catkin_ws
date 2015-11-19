@@ -19,12 +19,12 @@ public:
     LinearClassifier(void);
     
     std::vector <struct Classification> getPositive(std::vector< std::vector<my_float> > data, int threads);
+    std::vector <my_float> classify(std::vector< std::vector<my_float> > data, int threads); 
     bool testClassifier(void);
     
 private:
     my_float dotProduct(std::vector<my_float> in);
     void worker(const std::vector< std::vector<my_float> >& in, std::vector<my_float>& out, int start, int numTasks);
-    std::vector <my_float> classify(std::vector< std::vector<my_float> > data, int threads); 
     void initTestData(void);
     
     std::vector <my_float> clsResult;
