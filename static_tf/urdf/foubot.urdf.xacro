@@ -25,50 +25,50 @@
     <joint name="tip_joint" type="fixed">
       <parent link="base_plate" />
       <child link="base_plate_tip" />
-      <origin rpy="0 0 0" xyz="0.13 0 0"/>
+      <origin rpy="0 0 0" xyz="0.128 0 0"/>
     </joint>
     
     <joint name="cam_joint" type="fixed">
       <parent link="base_plate" />
       <child link="cam_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="-0.024 0.0 0.1"/>
     </joint>
     
     <joint name="imu_joint" type="fixed">
       <parent link="base_plate" />
       <child link="imu_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.025 -0.01 0.005"/>
     </joint>
     
     <joint name="ir1_joint" type="fixed">
-      <parent link="base_plate" />
+      <parent link="base_link" />
       <child link="ir1_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 1.57" xyz="0.05 0.071 0.118"/>
     </joint>
     <joint name="ir2_joint" type="fixed">
-      <parent link="base_plate" />
+      <parent link="base_link" />
       <child link="ir2_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 1.57" xyz="-0.05 0.071 0.120"/>
     </joint>
     <joint name="ir3_joint" type="fixed">
       <parent link="base_plate" />
       <child link="ir3_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.014 0.035 0.021"/>
     </joint>
     <joint name="ir4_joint" type="fixed">
       <parent link="base_plate" />
       <child link="ir4_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 0" xyz="0.014 -0.036 0.021"/>
     </joint>
     <joint name="ir5_joint" type="fixed">
-      <parent link="base_plate" />
+      <parent link="base_link" />
       <child link="ir5_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 -1.57" xyz="0.05 -0.071 0.12"/>
     </joint>
     <joint name="ir6_joint" type="fixed">
-      <parent link="base_plate" />
+      <parent link="base_link" />
       <child link="ir6_link" />
-      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <origin rpy="0 0 -1.57" xyz="-0.05 -0.071 0.12"/>
     </joint>
     
 </robot>
