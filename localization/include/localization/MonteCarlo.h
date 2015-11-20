@@ -48,6 +48,7 @@ class MonteCarlo{
         struct PoseState odom0;
         int nParticles;
         double minDelta;
+        double wavg, wslow, wfast, aslow, afast;
         bool (*isFree)(double, double);
         std::vector<SensorInterface*> sensors;
         

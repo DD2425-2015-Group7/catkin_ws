@@ -8,6 +8,9 @@ MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const 
     this->first = true;
     this->isFree = isFree;
     srand (time(NULL));
+    wavg = wslow = wfast = 0.0;
+    aslow = 0.02;
+    afast = 0.3;
 }
 
 bool MonteCarlo::run(struct PoseState odom)
@@ -81,6 +84,7 @@ void MonteCarlo::sensorUpdate(void)
         }
         wsum += belief[j].weight;
     }
+    wavg = wsum / belief.size();
     for(int j = 0; j < belief.size(); j++)
         belief[j].weight = belief[j].weight / wsum;
 }
@@ -93,12 +97,18 @@ void MonteCarlo::sample(void)
     //The particle filter: 90.
     if(belief.size()<1)
         return;
+    wslow += aslow * (wavg - wslow);
+    wfast += afast * (wavg - wfast);
     std::vector<struct StateW> nb;
     double r = ((double)rand()/(double)(RAND_MAX))/((double)belief.size());
     int sz, i = 0;
     double c = belief[0].weight;
     sz = belief.size();
     for(int m = 0; m < sz; m++){
+        if(0){ //with probability max(0, 1 - wfast/wslow)
+            //add random pose
+        }//otherwise sample a pose normally
+        
         double u = r + m/((double)sz);
         while(u > c){
             i = i + 1;

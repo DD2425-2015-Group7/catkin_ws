@@ -8,12 +8,15 @@ robot_base_link: "base_link"
 mcl_particles: 200
 mcl_rate: 5
 mcl_init_cone_radius: 0.2
-mcl_init_yaw_variance: 0.3
+mcl_init_yaw_variance: 0.15
 mcl_min_position_delta: 0.001
-odometry_model_a1: 0.05
-odometry_model_a2: 0.01
-odometry_model_a3: 0.02
-odometry_model_a4: 0.01
-ir_model_sigma_hit: 0.1
-ir_model_z_hit: 0.95
-ir_model_z_random_over_z_max: 0.05
+
+# a1: rot <- rot, a2: rot <- trans
+# a3: trans <- trans, a4: trans <- rot
+odometry_model_a1: 0.06
+odometry_model_a2: 0.12
+odometry_model_a3: 0.03 
+odometry_model_a4: 0.02
+ir_model_sigma_hit: 0.3
+ir_model_z_hit: 0.7
+ir_model_z_random_over_z_max: 0.3
