@@ -27,15 +27,18 @@ class SensorPublish():
     def prepareArray(self):
         for i in range(0, len(self.sensors)):
             r = Range()
+            r.header.frame_id = "ir{}_link".format(i + 1)
             r.min_range = self.sensors[i].min_range
             r.max_range = self.sensors[i].max_range
             r.radiation_type = r.INFRARED
             self.msg.array += [r]
         
     def readAdc(self, msg):
+        self.msg.header.stamp = rospy.Time.now()
         for i in range(0, len(self.sensors)):
             m = getattr(msg, self.sensors[i].channel)
             self.msg.array[i].range = polyval(self.coeffs[i], m)
+            self.msg.array[i].header.stamp = self.msg.header.stamp
         self.irpub.publish(self.msg)
 
 

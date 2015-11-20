@@ -139,7 +139,7 @@ target_link_libraries(odometry
    ${catkin_LIBRARIES}
 )
 
-add_executable(mcl_node src/mcl_node.cpp src/MonteCarlo.cpp src/OdometryModel.cpp)
+add_executable(mcl_node src/mcl_node.cpp src/MonteCarlo.cpp src/OdometryModel.cpp src/RangeModel.cpp)
 add_dependencies(mcl_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(mcl_node
    ${catkin_LIBRARIES}
