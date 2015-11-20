@@ -21,11 +21,10 @@
   <node pkg="plane_extraction" type="plane_extraction" respawn="false" name="plane_extraction" output="screen" />
 
   <include file="$(find path_planning)/launch/bag_planner.launch" />
-  <!--  
+ 
   <include file="$(find phidgets_imu)/launch/imu.launch" />
   <node pkg="ras_espeak" type="espeak_node" respawn="false" name="espeak_node" output="screen" />
   <node pkg="imu_crash" type="imu_crash" respawn="false" name="imu_crash" output="screen" />
-  -->
 
 
 </launch> 
