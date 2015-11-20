@@ -5,3 +5,15 @@ odometry_frame: "odom"
 odometry_distance_bias_correction: 1.02
 odometry_angle_bias_correction: 0.986
 robot_base_link: "base_link"
+mcl_particles: 200
+mcl_rate: 5
+mcl_init_cone_radius: 0.2
+mcl_init_yaw_variance: 0.3
+mcl_min_position_delta: 0.001
+odometry_model_a1: 0.05
+odometry_model_a2: 0.01
+odometry_model_a3: 0.02
+odometry_model_a4: 0.01
+ir_model_sigma_hit: 0.1
+ir_model_z_hit: 0.95
+ir_model_z_random_over_z_max: 0.05

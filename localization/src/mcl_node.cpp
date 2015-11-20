@@ -232,6 +232,11 @@ int main(int argc, char **argv)
     geometry_msgs::PoseArray poseArray;
     poseArray.header.frame_id = mapFrame;
     
+    //Wait 8 s for the map service.
+    if(!ros::service::waitForService("/map_node/get_map", 8000)){ 
+        ROS_ERROR("Map service unreachable.");
+        return -1;
+    }
     mapInflated = new nav_msgs::OccupancyGrid();
     mapDistance = new nav_msgs::OccupancyGrid();
     ros::ServiceClient map_client_obj = n.serviceClient<map_tools::GetMap>("/map_node/get_map");
@@ -247,7 +252,7 @@ int main(int argc, char **argv)
     pose.y += coords.y0;
     om = new OdometryModel(odom_a1, odom_a2, odom_a3, odom_a4);
     mc = new MonteCarlo(om, &isPointFree, nParticles, minDelta);
-    mc->init(pose, initConeRadius, initYawVar * 0.0);
+    mc->init(pose, initConeRadius, initYawVar);
     irm = new RangeModel(&getDist, irSigma, irZhit, irZrm);
     mc->addSensor(irm);
     
