@@ -8,16 +8,25 @@
 class RangeModel : public SensorInterface
 {
     public:
+        struct Reading{
+            double x;
+            double y;
+            double sigma;
+            Reading(double x=0, double y=0, double sigma=0)
+                    : x(x), y(y), sigma(sigma)
+            {
+            }
+        };
         virtual double likelihood(struct PoseState s);
-        RangeModel(double (*nearestObstacleDist)(double, double), double sigmaHit, double zHit, double zrm);
-        void updateMeasurements(std::vector<struct PoseState> m);
+        RangeModel(double (*nearestObstacleDist)(double, double), double zHit, double zrm);
+        void updateMeasurements(std::vector<struct Reading> m);
         
     private:
-        std::vector<struct PoseState> measured;
+        std::vector<struct Reading> measured;
         double (*getDist)(double, double);
-        double sigmaHit, zHit, zrm;
+        double zHit, zrm;
         
-        double prob(double dist2);
+        double prob(double dist2, double sigmaHit);
 };
 
 #endif

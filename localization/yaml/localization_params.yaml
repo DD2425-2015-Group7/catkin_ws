@@ -10,13 +10,17 @@ mcl_rate: 5
 mcl_init_cone_radius: 0.2
 mcl_init_yaw_variance: 0.15
 mcl_min_position_delta: 0.001
+mcl_aslow: 0.001
+mcl_afast: 0.02
+mcl_crash_radius: 0.1
+mcl_crash_yaw: 0.2
 
 # a1: rot <- rot, a2: rot <- trans
 # a3: trans <- trans, a4: trans <- rot
-odometry_model_a1: 0.06
-odometry_model_a2: 0.12
-odometry_model_a3: 0.03 
+odometry_model_a1: 0.03
+odometry_model_a2: 0.03
+odometry_model_a3: 0.02 
 odometry_model_a4: 0.02
-ir_model_sigma_hit: 0.3
-ir_model_z_hit: 0.7
-ir_model_z_random_over_z_max: 0.3
+ir_model_sigma_hit: 0.2
+ir_model_z_hit: 0.8
+ir_model_z_random_over_z_max: 0.2

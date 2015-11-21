@@ -1,19 +1,18 @@
 #include "localization/RangeModel.h"
 
-RangeModel::RangeModel(double (*nearestObstacleDist)(double, double), double sigmaHit, double zHit, double zrm)
+RangeModel::RangeModel(double (*nearestObstacleDist)(double, double), double zHit, double zrm)
 {
     this->getDist = nearestObstacleDist;
-    this->sigmaHit = sigmaHit;
     this->zHit = zHit;
     this->zrm = zrm;
 }
 
-void RangeModel::updateMeasurements(std::vector<struct PoseState> m)
+void RangeModel::updateMeasurements(std::vector<RangeModel::Reading> m)
 {
     this->measured = m;
 }
 
-double RangeModel::prob(double dist2)
+double RangeModel::prob(double dist2, double sigmaHit)
 {
     double p;
     p = (1.0/(std::sqrt(2.0*M_PI)*sigmaHit));
@@ -39,7 +38,7 @@ double RangeModel::likelihood(struct PoseState state)
         y = state.y + measured[i].y*cos(state.yaw) + measured[i].x*sin(state.yaw);
         dist = getDist(x, y);
         dist = dist*dist;
-        q = q * prob(dist);
+        q = q * prob(dist, measured[i].sigma);
     }
     
     return q;

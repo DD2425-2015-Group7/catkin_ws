@@ -14,7 +14,6 @@ class MapStorage{
         MapStorage(double cellSize, int fullyOccupied = 100, double inflationRadius = 0.01);
         void stackWall(double x0, double y0, double x1, double y1, double thickness);
         void stackEllipse(double x, double y, double a, double b, double th);
-        
 
         void loadWalls(std::string fn, double thickness);
         void renderGrid(void);

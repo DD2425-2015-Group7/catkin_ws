@@ -25,12 +25,13 @@ class MonteCarlo{
             {
             }
         };
-        MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const int nParticles, double minDelta);
+        MonteCarlo(OdometryModel *om, bool (*isFree)(double, double),
+            const int nParticles, double minDelta, double aslow, double afast,
+            double crashRadius, double crashYaw);
         void addSensor(SensorInterface* si);
         void removeSensors(void);
-        //void initRandom(void);
         void init(struct PoseState pose, double coneRadius, double yawVar);
-        bool run(struct PoseState odom);
+        bool run(struct PoseState odom, double mapXsz, double mapYsz);
         struct PoseState getState(void);
         struct PoseState getStd(void);
         std::vector<struct StateW> getParticles(void);
@@ -47,13 +48,18 @@ class MonteCarlo{
         OdometryModel *om;
         struct PoseState odom0;
         int nParticles;
-        double minDelta;
+        double crashRadius, crashYaw;
+        double minDelta, mapXsz, mapYsz;
         double wavg, wslow, wfast, aslow, afast;
         bool (*isFree)(double, double);
         std::vector<SensorInterface*> sensors;
         
+        struct PoseState randNear(struct PoseState pose, double coneRadius, double yawVar);
+        void initRandom(std::vector<struct StateW>& particles);
         void motionUpdate(const struct PoseState odom);
-        void sensorUpdate(void);
+        double max(double a, double b);
+        double sensorUpdate(std::vector<StateW>& particles);
+        void lowVarSampleOne(int &i, double &c, double r, int m, std::vector<MonteCarlo::StateW>& particles);
         void sample(void);
         void avgAndStd(void);
         

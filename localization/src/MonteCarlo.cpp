@@ -1,6 +1,8 @@
 #include "localization/MonteCarlo.h"
 
-MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const int nParticles, double minDelta)
+MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double),
+    const int nParticles, double minDelta, double aslow, double afast,
+    double crashRadius, double crashYaw)
 {
     this->om = om;
     this->nParticles = nParticles;
@@ -9,43 +11,73 @@ MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double), const 
     this->isFree = isFree;
     srand (time(NULL));
     wavg = wslow = wfast = 0.0;
-    aslow = 0.02;
-    afast = 0.3;
+    this->aslow = aslow;
+    this->afast = afast;
+    assert(aslow >= 0.0);
+    assert(aslow < afast);
+    stateAvg.set(0.0);
+    this->crashRadius = crashRadius;
+    this->crashYaw = crashYaw;
 }
 
-bool MonteCarlo::run(struct PoseState odom)
+bool MonteCarlo::run(struct PoseState odom, double mapXsz, double mapYsz)
 {
     // Do not do anything when we are not moving.
     if(odom.magnitude() < minDelta)
         return false;
+    this->mapXsz = mapXsz;
+    this->mapYsz = mapYsz;
+    
     motionUpdate(odom);
-    sensorUpdate();
+    wavg = sensorUpdate(belief);
     sample();
     avgAndStd();
     return true;
 }
 
-void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
+struct PoseState MonteCarlo::randNear(struct PoseState pose, double coneRadius, double yawVar)
 {
     double r, th;
     double r1, r2;
     struct PoseState rs;
     rs.set(0.0);
-    belief.clear();
-    for(int i=0; i < nParticles; i++){
-        do{
-            th = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
-            r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
-            r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
-            r = coneRadius * r1 * r2;
-            rs.x = r*cos(th);
-            rs.y = r*sin(th);
-            rs = rs + pose;
-        }while(!isFree(rs.x, rs.y));
+    do{
+        th = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
         r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
         r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
-        rs.yaw += yawVar * r1 * r2;
-        belief.push_back(rs);
+        r = coneRadius * r1 * r2;
+        rs.x = r*cos(th);
+        rs.y = r*sin(th);
+        rs = rs + pose;
+    }while(!isFree(rs.x, rs.y));
+    r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+    r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
+    rs.yaw += yawVar * r1 * r2;
+    return rs;
+}
+
+void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
+{
+    stateAvg = pose;
+    belief.clear();
+    for(int i=0; i < nParticles; i++){
+        belief.push_back(randNear(pose, coneRadius, yawVar)); //TODO How come this works ?????
+    }
+}
+
+void MonteCarlo::initRandom(std::vector<MonteCarlo::StateW>& particles)
+{
+    struct StateW rsw;
+    rsw.s.set(0.0);
+    particles.clear();
+    
+    for(int i=0; i < nParticles; i++){
+        rsw.s.yaw = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
+        do{
+            rsw.s.x = mapXsz * ((double)rand()/(double)(RAND_MAX));
+            rsw.s.y = mapYsz * ((double)rand()/(double)(RAND_MAX));
+        }while(!isFree(rsw.s.x, rsw.s.y));
+        particles.push_back(rsw);
     }
 }
 
@@ -57,16 +89,24 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
         return;
     }
     om->setOdometry(this->odom0, odom);
-    struct PoseState st;
+    struct PoseState st, sb;
     for(int i = 0; i < belief.size(); i++){
-        int count = 0;
+        int c1 = 0, c2 = 0;
+        sb = belief[i].s;
         do{
-            st = om->sample(belief[i].s);
-            count++;
-            if(count > 10){
-                //If hitting a wall, keep the old particle. The move is not possible.
+            st = om->sample(sb);
+            c1++;
+            //If still having problems.
+            if(c2 > 2){
                 st = belief[i].s;
                 break;
+            }
+            //If hitting a wall.
+            if(c1 > 4){
+                sb = randNear(stateAvg, crashRadius, crashYaw);
+                c2++;
+                c1 = 0;
+                continue;
             }
         }while(!isFree(st.x, st.y));
         belief[i].s = st;
@@ -74,19 +114,39 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
     this->odom0 = odom;
 }
 
-void MonteCarlo::sensorUpdate(void)
+double MonteCarlo::sensorUpdate(std::vector<MonteCarlo::StateW>& particles)
 {
     double wsum = 0.0;
-    for(int j = 0; j < belief.size(); j++){
-        belief[j].weight = 1;
+    for(int j = 0; j < particles.size(); j++){
+        particles[j].weight = 1;
         for(int i = 0; i < sensors.size(); i++){
-            belief[j].weight *= sensors[i]->likelihood(belief[j].s);
+            particles[j].weight *= sensors[i]->likelihood(particles[j].s);
         }
-        wsum += belief[j].weight;
+        wsum += particles[j].weight;
     }
-    wavg = wsum / belief.size();
-    for(int j = 0; j < belief.size(); j++)
-        belief[j].weight = belief[j].weight / wsum;
+    for(int j = 0; j < particles.size(); j++)
+        particles[j].weight = particles[j].weight / wsum;
+    
+    return wsum / particles.size();
+}
+
+double MonteCarlo::max(double a, double b)
+{
+    if(a>b)
+        return a;
+    else
+        return b;
+}
+
+void MonteCarlo::lowVarSampleOne(int &i, double &c, double r, int m, std::vector<MonteCarlo::StateW>& particles)
+{
+    int sz = particles.size();
+    double u = r + ((double)m)/((double)sz);
+    while(u > c){
+        i = i + 1;
+        assert(i<sz);
+        c = c + particles[i].weight;
+    }
 }
 
 void MonteCarlo::sample(void)
@@ -95,27 +155,36 @@ void MonteCarlo::sample(void)
     //Low-variance sampler. Page 98.
     //Further on sampling hacks, random particle MCL: page 217.
     //The particle filter: 90.
-    if(belief.size()<1)
+    std::vector<struct StateW> nb, randPool;
+    double r1, r2, c1, c2;
+    int sz, i1, i2, m2;
+    
+    initRandom(randPool);
+    sensorUpdate(randPool);
+    
+    if(belief.size()<1 || randPool.size()<1)
         return;
+    
     wslow += aslow * (wavg - wslow);
     wfast += afast * (wavg - wfast);
-    std::vector<struct StateW> nb;
-    double r = ((double)rand()/(double)(RAND_MAX))/((double)belief.size());
-    int sz, i = 0;
-    double c = belief[0].weight;
+    r1 = ((double)rand()/(double)(RAND_MAX))/((double)belief.size());
+    r2 = ((double)rand()/(double)(RAND_MAX))/((double)randPool.size());
+    i1 = i2 = 0;
+    c1 = belief[0].weight;
+    c2 = randPool[0].weight;
     sz = belief.size();
-    for(int m = 0; m < sz; m++){
-        if(0){ //with probability max(0, 1 - wfast/wslow)
-            //add random pose
-        }//otherwise sample a pose normally
-        
-        double u = r + m/((double)sz);
-        while(u > c){
-            i = i + 1;
-            assert(i<sz);
-            c = c + belief[i].weight;
+    
+    m2 = 0;
+    for(int m1 = 0; m1 < sz; m1++){
+        //with probability max(0, 1 - wfast/wslow)
+        if(((double)rand()/(double)(RAND_MAX)) < max(0.0, 1.0 - wfast/wslow)){ 
+            lowVarSampleOne(i2, c2, r2, m2, randPool);
+            nb.push_back(randPool[i2]);
+            m2++;
+            continue;
         }
-        nb.push_back(belief[i]);
+        lowVarSampleOne(i1, c1, r1, m1, belief);
+        nb.push_back(belief[i1]);
     }
     belief = nb;
 }
