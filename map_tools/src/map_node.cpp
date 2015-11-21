@@ -11,7 +11,6 @@
 
 std::string mapFrame, wallFile;
 double wallThickness, inflationRadius, cellSize;
-int mapWidth, mapHeight;
 
 MapStorage *ms;
 
@@ -22,7 +21,7 @@ tf::TransformListener *tf_listener;
 bool addEllipse(map_tools::AddEllipse::Request  &req,
          map_tools::AddEllipse::Response &res)
 {
-    ms->addEllipse(req.x, req.y, req.a, req.b, req.th);
+    ms->stackEllipse(req.x, req.y, req.a, req.b, req.th);
     ms->renderGrid();
     return true;
 }
@@ -65,14 +64,12 @@ int main(int argc, char **argv)
     n.param<double>("wall_thickness", wallThickness, 0.02);
     n.param<double>("obstacle_inflation_radius", inflationRadius, 0.0);
     n.param<double>("cell_size", cellSize, 0.02);
-    n.param<int>("map_width_cells", mapWidth, 500);
-    n.param<int>("map_height_cells", mapHeight, 500);
 
     nav_msgs::OccupancyGrid map;
     map.header.frame_id = mapFrame;
     map.header.stamp = current_time;
     ros::Publisher map_pub_obj = n.advertise<nav_msgs::OccupancyGrid>("/map", 2);
-    ms = new MapStorage(mapWidth, mapHeight, cellSize, 100, inflationRadius);
+    ms = new MapStorage(cellSize, 100, inflationRadius);
 
     ms->loadWalls(wallFile, wallThickness);
     ms->renderGrid();
