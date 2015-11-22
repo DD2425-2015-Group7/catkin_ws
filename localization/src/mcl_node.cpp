@@ -116,7 +116,10 @@ void runMonteCarlo(void)
     mtx.lock();
     irm->updateMeasurements(irReadings);
     mtx.unlock();
-    mc->run(odomState, mapInflated->info.width, mapInflated->info.height);
+    double csz = mapInflated->info.resolution;
+    assert(csz > 0.00001);
+    mc->run(odomState, ((double)mapInflated->info.width)*csz,
+                        ((double)mapInflated->info.height)*csz);
     coords.x = coords.x0;
     coords.y = coords.y0;
     coords.th = 0.0;
@@ -213,7 +216,7 @@ int main(int argc, char **argv)
     
     int nParticles, rate;
     double initConeRadius, initYawVar, minDelta, aslow, afast;
-    double crashRadius, crashYaw;
+    double crashRadius, crashYaw, stdXY, stdYaw;
     n.param<int>("mcl_particles", nParticles, 200);
     n.param<int>("mcl_rate", rate, 5);
     n.param<double>("mcl_init_cone_radius", initConeRadius, 0.2);
@@ -223,6 +226,8 @@ int main(int argc, char **argv)
     n.param<double>("mcl_afast", afast, 0.2);
     n.param<double>("mcl_crash_radius", crashRadius, 0.1);
     n.param<double>("mcl_crash_yaw", crashYaw, 0.2);
+    n.param<double>("mcl_good_std_xy", stdXY, 0.1);
+    n.param<double>("mcl_good_std_yaw", stdYaw, 0.6);
 
     tf::TransformBroadcaster broadcaster_obj;
     tf_broadcaster = &broadcaster_obj;
@@ -252,14 +257,19 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    struct PoseState pose;
+    struct PoseState pose, goodStd;
+    goodStd.set(stdXY);
+    goodStd.yaw = stdYaw;
     pose.set(0.0);
     pose.x += coords.x0;
     pose.y += coords.y0;
     om = new OdometryModel(odom_a1, odom_a2, odom_a3, odom_a4);
     mc = new MonteCarlo(om, &isPointFree, nParticles, minDelta,
-                        aslow, afast, crashRadius, crashYaw);
+                        aslow, afast, crashRadius, crashYaw, goodStd);
+    double csz = mapInflated->info.resolution;
+    assert(csz > 0.00001);
     mc->init(pose, initConeRadius, initYawVar);
+    //mc->init(((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
     irm = new RangeModel(&getDist, irZhit, irZrm);
     mc->addSensor(irm);
     

@@ -2,10 +2,11 @@
 
 MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double),
     const int nParticles, double minDelta, double aslow, double afast,
-    double crashRadius, double crashYaw)
+    double crashRadius, double crashYaw, struct PoseState goodStd)
 {
     this->om = om;
     this->nParticles = nParticles;
+    assert(nParticles > 0);
     this->minDelta = minDelta;
     this->first = true;
     this->isFree = isFree;
@@ -18,6 +19,7 @@ MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double),
     stateAvg.set(0.0);
     this->crashRadius = crashRadius;
     this->crashYaw = crashYaw;
+    this->goodStd = goodStd;
 }
 
 bool MonteCarlo::run(struct PoseState odom, double mapXsz, double mapYsz)
@@ -27,28 +29,33 @@ bool MonteCarlo::run(struct PoseState odom, double mapXsz, double mapYsz)
         return false;
     this->mapXsz = mapXsz;
     this->mapYsz = mapYsz;
-    
-    motionUpdate(odom);
+    motionUpdate(odom); 
     wavg = sensorUpdate(belief);
     sample();
     avgAndStd();
     return true;
 }
 
-struct PoseState MonteCarlo::randNear(struct PoseState pose, double coneRadius, double yawVar)
+struct PoseState MonteCarlo::randNear(struct PoseState centre, double coneRadius, double yawVar)
 {
     double r, th;
     double r1, r2;
+    int count = 0;
     struct PoseState rs;
     rs.set(0.0);
     do{
+        count++;
+        if(count%10 == 0)
+            coneRadius = coneRadius * 1.3;
         th = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
         r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
         r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
         r = coneRadius * r1 * r2;
         rs.x = r*cos(th);
         rs.y = r*sin(th);
-        rs = rs + pose;
+        rs = rs + centre;
+        
+        assert(count<70); // WARNING: this fails (rarely). TODO: a better solution.
     }while(!isFree(rs.x, rs.y));
     r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
     r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
@@ -65,11 +72,21 @@ void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
     }
 }
 
+void MonteCarlo::init(double mapXsz, double mapYsz)
+{
+    this->mapXsz = mapXsz;
+    this->mapYsz = mapYsz;
+    stateAvg.set(0.0);
+    initRandom(belief);
+}
+
 void MonteCarlo::initRandom(std::vector<MonteCarlo::StateW>& particles)
 {
     struct StateW rsw;
     rsw.s.set(0.0);
     particles.clear();
+    assert(mapXsz > 0);
+    assert(mapYsz > 0);
     
     for(int i=0; i < nParticles; i++){
         rsw.s.yaw = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
@@ -103,7 +120,11 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
             }
             //If hitting a wall.
             if(c1 > 4){
-                sb = randNear(stateAvg, crashRadius, crashYaw);
+                // TODO: What if stateStd is low but our particle is an outlier?
+                if(stateStd > goodStd)
+                    sb = randNear(belief[i].s, crashRadius, crashYaw);
+                else
+                    sb = randNear(stateAvg, crashRadius, crashYaw);
                 c2++;
                 c1 = 0;
                 continue;
