@@ -5,15 +5,15 @@ odometry_frame: "odom"
 odometry_distance_bias_correction: 1.02
 odometry_angle_bias_correction: 0.986
 robot_base_link: "base_link"
-mcl_particles: 200
+mcl_particles: 400
 mcl_rate: 5
 mcl_init_cone_radius: 0.2
 mcl_init_yaw_variance: 0.15
 mcl_min_position_delta: 0.001
-mcl_aslow: 0.0005
-mcl_afast: 0.01
-mcl_crash_radius: 0.06
-mcl_crash_yaw: 0.1
+mcl_aslow: 0.0002
+mcl_afast: 0.02
+mcl_crash_radius: 0.1
+mcl_crash_yaw: 0.5
 
 # a1: rot <- rot, a2: rot <- trans
 # a3: trans <- trans, a4: trans <- rot

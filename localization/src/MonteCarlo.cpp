@@ -36,14 +36,13 @@ bool MonteCarlo::run(struct PoseState odom, double mapXsz, double mapYsz)
     return true;
 }
 
-struct PoseState MonteCarlo::randNear(struct PoseState centre, double coneRadius, double yawVar)
+bool MonteCarlo::randNear(struct PoseState centre, struct PoseState &rs, double coneRadius, double yawVar)
 {
     double r, th;
     double r1, r2;
     int count = 0;
-    struct PoseState rs;
-    rs.set(0.0);
     do{
+        rs.set(0.0);
         count++;
         if(count%10 == 0)
             coneRadius = coneRadius * 1.3;
@@ -55,20 +54,42 @@ struct PoseState MonteCarlo::randNear(struct PoseState centre, double coneRadius
         rs.y = r*sin(th);
         rs = rs + centre;
         
-        assert(count<70); // WARNING: this fails (rarely). TODO: a better solution.
+        if(count>70){ // WARNING: this fails (rarely). TODO: a better solution.
+            return false;
+        }
     }while(!isFree(rs.x, rs.y));
     r1 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
     r2 = ((double)rand()/(double)(RAND_MAX/2))-1.0;
     rs.yaw += yawVar * r1 * r2;
+    return true;
+}
+
+struct PoseState MonteCarlo::randUniform(void)
+{
+    struct PoseState rs;
+    assert(mapXsz > 0);
+    assert(mapYsz > 0);
+    rs.yaw = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
+    do{
+        rs.x = mapXsz * ((double)rand()/(double)(RAND_MAX));
+        rs.y = mapYsz * ((double)rand()/(double)(RAND_MAX));
+    }while(!isFree(rs.x, rs.y));
     return rs;
 }
 
-void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar)
+void MonteCarlo::init(struct PoseState pose, double coneRadius, double yawVar, double mapXsz, double mapYsz)
 {
+    this->mapXsz = mapXsz;
+    this->mapYsz = mapYsz;
+    struct PoseState rs;
     stateAvg = pose;
     belief.clear();
     for(int i=0; i < nParticles; i++){
-        belief.push_back(randNear(pose, coneRadius, yawVar)); //TODO How come this works ?????
+        if(randNear(pose, rs, coneRadius, yawVar)){
+            belief.push_back(rs);   //TODO How come this works ?????
+        }else{
+            belief.push_back(randUniform());
+        }
     }
 }
 
@@ -89,11 +110,14 @@ void MonteCarlo::initRandom(std::vector<MonteCarlo::StateW>& particles)
     assert(mapYsz > 0);
     
     for(int i=0; i < nParticles; i++){
+        /*
         rsw.s.yaw = (((double)rand()/(double)(RAND_MAX/2))-1.0)*M_PI;
         do{
             rsw.s.x = mapXsz * ((double)rand()/(double)(RAND_MAX));
             rsw.s.y = mapYsz * ((double)rand()/(double)(RAND_MAX));
         }while(!isFree(rsw.s.x, rsw.s.y));
+        */
+        rsw.s = randUniform();
         particles.push_back(rsw);
     }
 }
@@ -121,10 +145,17 @@ void MonteCarlo::motionUpdate(const struct PoseState odom)
             //If hitting a wall.
             if(c1 > 4){
                 // TODO: What if stateStd is low but our particle is an outlier?
-                if(stateStd > goodStd)
-                    sb = randNear(belief[i].s, crashRadius, crashYaw);
-                else
-                    sb = randNear(stateAvg, crashRadius, crashYaw);
+                if(stateStd > goodStd){
+                    if(!randNear(belief[i].s, sb, crashRadius, crashYaw)){
+                        st = belief[i].s;
+                        break;
+                    }
+                }else{
+                    if(!randNear(stateAvg, sb, crashRadius, crashYaw)){
+                        st = belief[i].s;
+                        break;
+                    }
+                }
                 c2++;
                 c1 = 0;
                 continue;

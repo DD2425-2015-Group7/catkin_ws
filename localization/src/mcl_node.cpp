@@ -268,7 +268,7 @@ int main(int argc, char **argv)
                         aslow, afast, crashRadius, crashYaw, goodStd);
     double csz = mapInflated->info.resolution;
     assert(csz > 0.00001);
-    mc->init(pose, initConeRadius, initYawVar);
+    mc->init(pose, initConeRadius, initYawVar, ((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
     //mc->init(((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
     irm = new RangeModel(&getDist, irZhit, irZrm);
     mc->addSensor(irm);

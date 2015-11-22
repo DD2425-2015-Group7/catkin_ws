@@ -31,7 +31,8 @@ class MonteCarlo{
         void addSensor(SensorInterface* si);
         void removeSensors(void);
         void init(double mapXsz, double mapYsz);
-        void init(struct PoseState pose, double coneRadius, double yawVar);
+        //void init(struct PoseState pose, double coneRadius, double yawVar);
+        void init(struct PoseState pose, double coneRadius, double yawVar, double mapXsz, double mapYsz);
         bool run(struct PoseState odom, double mapXsz, double mapYsz);
         struct PoseState getState(void);
         struct PoseState getStd(void);
@@ -55,7 +56,9 @@ class MonteCarlo{
         bool (*isFree)(double, double);
         std::vector<SensorInterface*> sensors;
         
-        struct PoseState randNear(struct PoseState centre, double coneRadius, double yawVar);
+        struct PoseState randUniform(void);
+        bool randNear(struct PoseState centre, struct PoseState &rs, double coneRadius, double yawVar);
+        //struct PoseState randNear(struct PoseState centre, double coneRadius, double yawVar);
         void initRandom(std::vector<struct StateW>& particles);
         void motionUpdate(const struct PoseState odom);
         double max(double a, double b);
