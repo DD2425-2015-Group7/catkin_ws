@@ -1,12 +1,15 @@
 <?xml version="1.0"?>
 <launch>
   <master auto="start"/>
-   
-  <node pkg="localization" type="odometry" respawn="false" name="odometry" output="screen">
+
+  <include file="$(find static_tf)/launch/description.launch" />
+  <include file="$(find map_tools)/launch/map.launch" />
+  
+  <node pkg="localization" type="odometry" respawn="false" name="odometry" output="screen" required="true">
     <rosparam file="$(find localization)/yaml/localization_params.yaml" command="load" />
   </node>
   
-  <node pkg="localization" type="mcl_node" respawn="false" name="mcl_node" output="screen">
+  <node pkg="localization" type="mcl_node" respawn="false" name="mcl_node" output="screen" required="true">
     <rosparam file="$(find localization)/yaml/localization_params.yaml" command="load" />
   </node>
   

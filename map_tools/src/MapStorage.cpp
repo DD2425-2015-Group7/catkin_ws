@@ -1,11 +1,9 @@
 #include "map_tools/MapStorage.h"
 
 
-MapStorage::MapStorage(int wc, int hc, double cellSize, int fullyOccupied, double inflationRadius)
+MapStorage::MapStorage(double cellSize, int fullyOccupied, double inflationRadius)
 {
     assert(cellSize>1e-10);
-    assert(wc>0);
-    assert(hc>0);
     this->cellSz = cellSize;
     this->fullyOccupied = fullyOccupied;
     this->inflationRadius = inflationRadius;
@@ -14,8 +12,6 @@ MapStorage::MapStorage(int wc, int hc, double cellSize, int fullyOccupied, doubl
     inflMap = new nav_msgs::OccupancyGrid();
     map->info.map_load_time = ros::Time::now();
     map->info.resolution = cellSize;
-    map->info.width = wc;
-    map->info.height = hc;
     map->info.origin.position.x = 0.0;
     map->info.origin.position.y = 0.0;
     map->info.origin.position.z = 0.0;
@@ -23,15 +19,14 @@ MapStorage::MapStorage(int wc, int hc, double cellSize, int fullyOccupied, doubl
     map->info.origin.orientation.y = 0.0;
     map->info.origin.orientation.z = 0.0;
     map->info.origin.orientation.w = 1.0;
-    map->data.resize(wc*hc);
-    *distMap = *map;
-    *inflMap = *map;
-
-    surface = cairo_image_surface_create (CAIRO_FORMAT_A8, wc, hc);
-    cr = cairo_create (surface);
+    this->xMax = 0.0;
+    this->yMax = 0.0;
+    
+    surface = nullptr;
+    cr = nullptr;
 }
 
-void MapStorage::addWall(double x0, double y0, double x1, double y1, double thickness)
+void MapStorage::drawWall(double x0, double y0, double x1, double y1, double thickness)
 {
     x0 = x0/cellSz;
     y0 = y0/cellSz;
@@ -47,7 +42,7 @@ void MapStorage::addWall(double x0, double y0, double x1, double y1, double thic
     cairo_restore (cr);
 }
 
-void MapStorage::addEllipse(double x, double y, double a, double b, double th)
+void MapStorage::drawEllipse(double x, double y, double a, double b, double th)
 {
     x = x/cellSz;
     y = y/cellSz;
@@ -163,10 +158,53 @@ void MapStorage::renderInflMap(void)
     }
 }
 
+void MapStorage::stackWall(double x0, double y0, double x1, double y1, double thickness)
+{
+    if(x0 > xMax)
+        xMax = x0;
+    if(x1 > xMax)
+        xMax = x1;
+    if(y0 > yMax)
+        yMax = y0;
+    if(y1 > yMax)
+        yMax = y1;
+    wallSt.push_back(MapStorage::Wall(x0,y0,x1,y1,thickness));
+}
+
+void MapStorage::stackEllipse(double x, double y, double a, double b, double th)
+{
+    ellipseSt.push_back(MapStorage::Ellipse(x,y,a,b,th));
+}
+
+
 void MapStorage::renderGrid(void)
 {
+    int wc, hc;
+    wc = (int)(xMax/cellSz);
+    hc = (int)(yMax/cellSz);
+    assert(wc > 0);
+    assert(hc > 0);
+    map->info.width = wc;
+    map->info.height = hc;
+    map->data.resize(wc*hc);
+    *distMap = *map;
+    *inflMap = *map;
+
+    if(cr!=nullptr)
+        cairo_destroy(cr);
+    if(surface!=nullptr)
+        cairo_surface_destroy(surface);
+    
+    surface = cairo_image_surface_create (CAIRO_FORMAT_A8, wc, hc);
+    cr = cairo_create (surface);
+    
+    for(int i = 0; i<wallSt.size(); i++)
+        drawWall(wallSt[i].x0, wallSt[i].y0, wallSt[i].x1, wallSt[i].y1, wallSt[i].thickness);
+    for(int i = 0; i<ellipseSt.size(); i++)
+        drawEllipse(ellipseSt[i].x, ellipseSt[i].y, ellipseSt[i].a, ellipseSt[i].b, ellipseSt[i].th);
+    
     unsigned char *data = cairo_image_surface_get_data (surface);
-    map->data.assign(data, data+(map->info.width*map->info.height));
+    map->data.assign(data, data+(wc*hc));
     renderDistMap();
     renderInflMap();
 }
@@ -222,7 +260,7 @@ void MapStorage::loadWalls(std::string fn, double thickness)
             continue;
         }
 
-        addWall(x1, y1, x2, y2, thickness);
+        stackWall(x1, y1, x2, y2, thickness);
         wall_id++;
     }
     ROS_INFO_STREAM("Read "<<wall_id<<" walls from map file.");

@@ -38,7 +38,7 @@ class SensorPublish():
         for i in range(0, len(self.sensors)):
             m = getattr(msg, self.sensors[i].channel)
             self.msg.array[i].range = polyval(self.coeffs[i], m)
-            seld.msg.header[i].stamp = self.msg.header.stamp
+            self.msg.array[i].header.stamp = self.msg.header.stamp
         self.irpub.publish(self.msg)
 
 

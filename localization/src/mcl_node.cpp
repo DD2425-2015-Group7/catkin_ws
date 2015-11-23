@@ -4,17 +4,25 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
 #include "nav_msgs/Odometry.h"
+#include "ir_sensors/RangeArray.h"
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 #include "tf/transform_listener.h"
 #include "tf/transform_broadcaster.h"
 #include "tf/transform_datatypes.h"
 #include "map_tools/GetMap.h"
 #include "localization/MonteCarlo.h"
+#include "localization/RangeModel.h"
 
 #include <mutex>
 
 #define PI 3.14159
 
+typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, ir_sensors::RangeArray> SyncPolicy;
+
 std::string odomFrame, baseFrame, mapFrame;
+double irSigma;
 int minOccupied;
 
 std::mutex mtx;
@@ -32,19 +40,55 @@ ros::ServiceClient *map_client;
 nav_msgs::OccupancyGrid *mapInflated, *mapDistance;
 MonteCarlo *mc;
 OdometryModel *om;
+RangeModel *irm;
 struct PoseState odomState;
+std::vector<RangeModel::Reading> irReadings;
 
-void updateOdom(const nav_msgs::Odometry::ConstPtr& msg)
+void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sensors::RangeArray::ConstPtr& ir_msg)
 {
     mtx.lock();
-    current_time = msg->header.stamp;
+    current_time = odom_msg->header.stamp;
     odomState.set(0.0);
-    odomState.x = msg->pose.pose.position.x;
-    odomState.y = msg->pose.pose.position.y;
-    odomState.yaw = tf::getYaw(msg->pose.pose.orientation);
+    odomState.x = odom_msg->pose.pose.position.x;
+    odomState.y = odom_msg->pose.pose.position.y;
+    odomState.yaw = tf::getYaw(odom_msg->pose.pose.orientation);
+    
+    irReadings.clear();
+    struct RangeModel::Reading s;
+    geometry_msgs::PoseStamped ps, pg;
+    ps.header.stamp = ir_msg->header.stamp;
+    ps.pose.position.y = 0;
+    ps.pose.position.z = 0;
+    ps.pose.orientation = tf::createQuaternionMsgFromYaw(0);;
+    
+    for(int i = 0; i < ir_msg->array.size(); i++){
+        s.sigma = irSigma * ir_msg->array[i].max_range;
+        double r = ir_msg->array[i].range;
+        if(r < ir_msg->array[i].min_range || r > ir_msg->array[i].max_range){
+            s.x = 0.0;
+            s.y = 0.0;
+            irReadings.push_back(s);
+            continue;
+        }
+        ps.header.frame_id = ir_msg->array[i].header.frame_id;
+        ps.pose.position.x = r;
+        tf::StampedTransform transform;
+        try{
+            tf_listener->waitForTransform(baseFrame, ir_msg->array[i].header.frame_id, ir_msg->header.stamp, ros::Duration(0.5));
+            tf_listener->transformPose(baseFrame, ps, pg);
+        }catch(tf::TransformException &ex){
+            ROS_ERROR("%s",ex.what());
+            mtx.unlock();
+            return;
+        }
+        s.x = pg.pose.position.x;
+        s.y = pg.pose.position.y;
+        irReadings.push_back(s);
+    }
     mtx.unlock();
     
 }
+
 
 bool updateMap(void)
 {
@@ -69,24 +113,46 @@ bool updateMap(void)
 
 void runMonteCarlo(void)
 {
-    mc->run(odomState);
+    mtx.lock();
+    irm->updateMeasurements(irReadings);
+    mtx.unlock();
+    double csz = mapInflated->info.resolution;
+    assert(csz > 0.00001);
+    mc->run(odomState, ((double)mapInflated->info.width)*csz,
+                        ((double)mapInflated->info.height)*csz);
     coords.x = coords.x0;
     coords.y = coords.y0;
     coords.th = 0.0;
 }
 
-bool isPointFree(double x, double y)
+int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y)
 {
     int xi, yi;
     if(x < 0.0 || y < 0.0)
+        return -1;
+    xi = (x/m.info.resolution);
+    yi = (y/m.info.resolution);
+    if(xi >= m.info.width - 1)
+        return -1;
+    if(yi >= m.info.height - 1)
+        return -1;
+    return m.data[yi * m.info.width + xi];
+}
+
+double getDist(double x, double y)
+{
+    int v = getMapValue(*mapDistance, x, y);
+    if(v < 0)
+        return -10.0;
+    return (v * mapDistance->info.resolution);
+}
+
+bool isPointFree(double x, double y)
+{
+    int v = getMapValue(*mapInflated, x, y);
+    if(v < 0)
         return false;
-    xi = (x/mapInflated->info.resolution);
-    yi = (y/mapInflated->info.resolution);
-    if(xi >= mapInflated->info.width - 1)
-        return false;
-    if(yi >= mapInflated->info.height - 1)
-        return false;
-    return (mapInflated->data[yi*mapInflated->info.width + xi] < minOccupied);
+    return (v < minOccupied);
 }
 
 void publishTransform(void)
@@ -126,16 +192,6 @@ void particles2PoseArray(const std::vector<MonteCarlo::StateW> &particles, geome
 
 int main(int argc, char **argv)
 {
-	/**
-	* The ros::init() function needs to see argc and argv so that it can perform
-	* any ROS arguments and name remapping that were provided at the command line.
-	* For programmatic remappings you can use a different version of init() which takes
-	* remappings directly, but for most command-line programs, passing argc and argv is
-	* the easiest way to do it.  The third argument to init() is the name of the node.
-	*
-	* You must call one of the versions of ros::init() before using any other
-	* part of the ROS system.
-	*/
 	ros::init(argc, argv, "mcl_node");
 	ros::NodeHandle n("/mcl_node");;
 	
@@ -152,23 +208,46 @@ int main(int argc, char **argv)
     n.param<double>("odometry_model_a3", odom_a3, 0.02);
     n.param<double>("odometry_model_a4", odom_a4, 0.01);
     
+    //TODO: setup these IR constants more properly.
+    double irZhit, irZrm;
+    n.param<double>("ir_model_sigma_hit", irSigma, 0.1);
+    n.param<double>("ir_model_z_hit", irZhit, 0.95);
+    n.param<double>("ir_model_z_random_over_z_max", irZrm, 0.05);
+    
     int nParticles, rate;
-    double initConeRadius, initYawVar;
+    double initConeRadius, initYawVar, minDelta, aslow, afast;
+    double crashRadius, crashYaw, stdXY, stdYaw;
     n.param<int>("mcl_particles", nParticles, 200);
     n.param<int>("mcl_rate", rate, 5);
     n.param<double>("mcl_init_cone_radius", initConeRadius, 0.2);
     n.param<double>("mcl_init_yaw_variance", initYawVar, 0.3);
+    n.param<double>("mcl_min_position_delta", minDelta, 0.001);
+    n.param<double>("mcl_aslow", aslow, 0.01);
+    n.param<double>("mcl_afast", afast, 0.2);
+    n.param<double>("mcl_crash_radius", crashRadius, 0.1);
+    n.param<double>("mcl_crash_yaw", crashYaw, 0.2);
+    n.param<double>("mcl_good_std_xy", stdXY, 0.1);
+    n.param<double>("mcl_good_std_yaw", stdYaw, 0.6);
 
     tf::TransformBroadcaster broadcaster_obj;
     tf_broadcaster = &broadcaster_obj;
     tf::TransformListener listener_obj;
     tf_listener = &listener_obj;
     
-	ros::Subscriber odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 50, updateOdom);
+    message_filters::Subscriber<nav_msgs::Odometry> odom_sub(n, "/odom", 1);
+    message_filters::Subscriber<ir_sensors::RangeArray> range_sub(n,"/ir_publish/sensors", 1);
+    message_filters::Synchronizer<SyncPolicy> sync(SyncPolicy(10), odom_sub, range_sub);
+    sync.registerCallback(boost::bind(&odomRangeUpdate, _1, _2));
+    
     ros::Publisher particle_pub_obj = n.advertise<geometry_msgs::PoseArray>("/mcl/particles", 5);
     geometry_msgs::PoseArray poseArray;
     poseArray.header.frame_id = mapFrame;
     
+    //Wait 8 s for the map service.
+    if(!ros::service::waitForService("/map_node/get_map", 8000)){ 
+        ROS_ERROR("Map service unreachable.");
+        return -1;
+    }
     mapInflated = new nav_msgs::OccupancyGrid();
     mapDistance = new nav_msgs::OccupancyGrid();
     ros::ServiceClient map_client_obj = n.serviceClient<map_tools::GetMap>("/map_node/get_map");
@@ -178,19 +257,23 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    struct PoseState pose;
+    struct PoseState pose, goodStd;
+    goodStd.set(stdXY);
+    goodStd.yaw = stdYaw;
     pose.set(0.0);
     pose.x += coords.x0;
     pose.y += coords.y0;
     om = new OdometryModel(odom_a1, odom_a2, odom_a3, odom_a4);
-    mc = new MonteCarlo(om, &isPointFree, nParticles);
-    mc->init(pose, initConeRadius, initYawVar * 0.0);
-    /*
-    if(mc->test())
-        ROS_INFO("MCL test passed.");
-    else
-        ROS_INFO("MCL test failed.");
-    */
+    mc = new MonteCarlo(om, &isPointFree, nParticles, minDelta,
+                        aslow, afast, crashRadius, crashYaw, goodStd);
+    double csz = mapInflated->info.resolution;
+    assert(csz > 0.00001);
+    mc->init(pose, initConeRadius, initYawVar, ((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
+    //mc->init(((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
+    irm = new RangeModel(&getDist, irZhit, irZrm);
+    mc->addSensor(irm);
+    
+
     current_time = ros::Time::now();
 
     ros::Rate loop_rate(rate);
@@ -204,7 +287,7 @@ int main(int argc, char **argv)
         publishTransform();
         particles2PoseArray(mc->getParticles(), poseArray);
         particle_pub_obj.publish(poseArray);
-		ros::spinOnce(); // Run the callbacks.
+		ros::spinOnce();
 		loop_rate.sleep();
 	}
 

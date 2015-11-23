@@ -23,6 +23,9 @@ struct PoseState{
     PoseState pow2(void){
         return PoseState(x*x, y*y, z*z, roll*roll, pitch*pitch, yaw*yaw);
     }
+    double magnitude(void){
+        return std::sqrt(x*x + y*y + z*z + roll*roll + pitch*pitch + yaw*yaw);
+    }
     PoseState sqrt(void){
         return PoseState(std::sqrt(x), std::sqrt(y), std::sqrt(z), std::sqrt(roll), std::sqrt(pitch), std::sqrt(yaw));
     }
