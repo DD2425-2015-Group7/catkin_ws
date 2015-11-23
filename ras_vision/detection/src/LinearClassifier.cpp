@@ -1,7 +1,7 @@
 #include "detection/LinearClassifier.h"
 
 
-my_float LinearClassifier::dotProduct(std::vector<my_float> in)
+my_float LinearClassifier::dotProduct(std::vector<my_float> in /*std::vector<my_float>& w*/)
 {
     assert(weights.size() == in.size());
     for(int i = 0; i < weights.size(); i++){
@@ -14,7 +14,7 @@ my_float LinearClassifier::dotProduct(std::vector<my_float> in)
     return out;
 }
 
-void LinearClassifier::worker(const std::vector< std::vector<my_float> >& in, std::vector<my_float>& out, int start, int numTasks)
+void LinearClassifier::worker(const std::vector< std::vector<my_float> >& in, /*std::vector<std::vector<my_float>>*/std::vector<my_float>& out, int start, int numTasks /*std::vector<my_float>& w*/)
 {    
     for (int j = start; j < start+numTasks; j++){
         out[j] = dotProduct(in[j]);
@@ -27,9 +27,9 @@ std::vector <my_float> LinearClassifier::classify(std::vector< std::vector<my_fl
     assert(threads > 0);
     clsResult.clear();
     int size = data.size();
-    
+
     if (size == 1) {
-        clsResult.push_back(dotProduct(data[0]));
+        clsResult/*[i]*/.push_back(dotProduct(data[0]));
     } else {
         int num_tasks = size < threads ? 1 : threads;
         int data_per_thread = size / num_tasks;
@@ -39,7 +39,7 @@ std::vector <my_float> LinearClassifier::classify(std::vector< std::vector<my_fl
         int pos = 0;
         for (int i = 0; i < num_tasks; i++) {
             int num = i == num_tasks - 1 ? remaining : data_per_thread;
-            workers.push_back(std::thread(std::bind(&LinearClassifier::worker, this, std::cref(data), std::ref(clsResult), pos, num)));
+            workers.push_back(std::thread(std::bind(&LinearClassifier::worker, this, std::cref(data), std::ref(clsResult/*[i]*/), pos, num /*, w*/)));
             pos += num;
             remaining -= num;
         }
@@ -53,12 +53,14 @@ std::vector <my_float> LinearClassifier::classify(std::vector< std::vector<my_fl
 
 std::vector <struct Classification> LinearClassifier::getPositive(std::vector< std::vector<my_float> > data, int threads)
 {
+   
     std::vector <struct Classification> pos;
     classify(data, threads);
     for(int i = 0; i < clsResult.size(); i++){
-        if(clsResult[i]>0){
+        if(clsResult[i]>0){  
             struct Classification cls;
             cls.index = i;
+            cls.obj_type = 1;
             cls.prob = 1.0/(1.0+exp(-clsResult[i]));
             pos.push_back(cls);
         }
@@ -78,8 +80,7 @@ void LinearClassifier::initTestData(void)
 
 LinearClassifier::LinearClassifier(const char modelFile[])
 {
-    //this->testingEnabled = false;
-    // TODO Load weights and the average image from a file.
+
     std::ifstream ifs(modelFile);
     assert(ifs.is_open());
     int dim;
@@ -97,7 +98,11 @@ LinearClassifier::LinearClassifier(const char modelFile[])
     }
     initTestData();
 }
-
+LinearClassifier::LinearClassifier( std::vector<my_float> w, std::vector<my_float> average, my_float b){
+	this->weights = w;
+	this->avg = average;
+	this->bias = b;
+}
 LinearClassifier::LinearClassifier(void)
 {
     //this->testingEnabled = true;
