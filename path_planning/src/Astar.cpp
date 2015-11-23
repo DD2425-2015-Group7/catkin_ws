@@ -4,7 +4,7 @@
 
 #include "std_msgs/String.h"
 
-#include <tf/transform_listener.h>
+//#include <tf/transform_listener.h>
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
@@ -21,7 +21,6 @@ double goalX;
 double goalY;
 
 #define G_OFFSET_4  10
-#define G_OFFSET_8  14
 
 nav_msgs::OccupancyGrid *map;
 
@@ -33,12 +32,14 @@ struct Node
     int g; //past road cost
     int h;
     int f; //heuristic, F = G + H
-    struct Node* parent; //parent node, used for trace road
+    //struct Node* parent; //parent node, used for trace road
 };
+
+
+Node come_from[400][400];
 
 void setCurrentPosition(const geometry_msgs::Pose::ConstPtr& msg)
 {
-    // have to check the format of the map. Should I use double or int?
     startX = msg.get()->position.x;
     startY = msg.get()->position.y;
 }
@@ -55,8 +56,7 @@ void setMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 //    int sizeOfRows = msg.get()->info.height;
 //    int sizeOfCols = msg.get()->info.width;
 
-      std::cout<< "Setting the map" <<std::endl;
-      ROS_INFO("Setting");
+      //std::cout<< "Setting the map" <<std::endl;
       map->data = msg.get()->data;
       map->info = msg.get()->info;
       map->header = msg.get()->header;
@@ -66,16 +66,16 @@ void setMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 //if this nodeList has this value, then return "true"
 bool itHas(vector<Node> nodeList, Node node)
 {
-    bool itHas = false;
+    bool ithas = false;
     for(int i = 0; i < nodeList.size(); i++)
     {
-        if(node.row = nodeList.at(i).row && node.col == nodeList.at(i).col)
+        if(node.row == nodeList.at(i).row && node.col == nodeList.at(i).col)
         {
-            itHas = true;
+            ithas = true;
             break;
         }
     }
-    return itHas;
+    return ithas;
 }
 
 class PathFinder
@@ -88,6 +88,7 @@ class PathFinder
     {
         start = node1;
         goal = node2;
+        //ROS_INFO("PathFinder Intialized");
     }
 
     int hValue(Node current)
@@ -113,7 +114,7 @@ class PathFinder
     //if this point is passable, then return TRUE, if it is occupied, return false
     bool isCanMove(int row,int col)
     {
-        if(map->data[col*map->info.width + row] > 10)
+        if(map->data[row*map->info.width + col] > 10)
         {
             //System.err.println("Not available");
             return false;
@@ -194,14 +195,22 @@ class PathFinder
     }
 
     //if the position of start or goal is invalid, then we return TRUE
+    // ROW -> Height? COL -> Width?
     bool inValid(Node start, Node goal)
     {
-        if(start.row >= map->info.width && start.col >= map->info.height &&
-                goal.row >= map->info.width && goal.col >= map->info.height &&
-                isCanMove(start.row,start.col) && isCanMove(goal.row,goal.col))
+        //std::cout << "Start Row & Col is : "<< start.row <<" & "<<start.col<<std::endl;
+        //std::cout << "Goal Row & Col is : "<< goal.row <<" & "<<goal.col<<std::endl;
+        //std::cout << "Map Height & Width is : "<< map->info.width <<" & "<<map->info.height<<std::endl;
+        if(start.row >= map->info.height || start.col >= map->info.width ||
+                goal.row >= map->info.height || goal.col >= map->info.width ||
+                !isCanMove(start.row,start.col) || !isCanMove(goal.row,goal.col))
+        {
             return true;
+        }
         else
+        {
             return false;
+        }
     }
 
     nav_msgs::Path getPath()
@@ -209,10 +218,11 @@ class PathFinder
         //if this two point is invalid, then break
         if(inValid(start,goal))
         {
+            ROS_INFO("Start or Goal is not valid");
             nav_msgs::Path nu;
             return nu;
         }
-
+        //ROS_INFO("Begin to find the path");
         vector<Node> closeSet;
         vector<Node> openSet;
         closeSet.clear();
@@ -221,11 +231,16 @@ class PathFinder
         start.g = 0;
         start.h = hValue(start);
         start.f = start.g + start.h;
+        come_from[start.row][start.col] = start;
+
         openSet.push_back(start);
 
-        while(openSet.size() > 0)
+        while(!openSet.empty())
         {
+            //std::cout << "openSet size is "<< openSet.size()<<std::endl;
             Node current = getBestChild(openSet);
+            //std::cout << "Current Point is: ( "<< current.row << " , "<<current.col <<" )" <<std::endl;
+            //std::cout << "Goal Point is: ( "<< goal.row << " , "<<goal.col <<" )" <<std::endl;
             if(current.row == goal.row && current.col == goal.col)
             {
                 ROS_INFO("Astar Destinaltion reached");
@@ -236,27 +251,34 @@ class PathFinder
             openSet.erase(openSet.begin() + position);
 
             closeSet.push_back(current);
+            //std::cout << "CloseSet size is "<< closeSet.size()<<std::endl;
 
             vector<Node> neighbours = getNeighbours(current);
 
             for(int i = 0; i < neighbours.size(); i++)
             {
+                //std::cout << "Neighbours size is "<< neighbours.size()   <<std::endl;
+                //std::cout << "Neighbour Point is: ( "<< neighbours.at(i).row << " , "<<neighbours.at(i).col <<" )" <<std::endl;
+                //ROS_INFO("Get neighbours?");
                 Node child = neighbours.at(i);
-                /*
-                if(closeSet.contains(child))
-                    continue;
-                 */
+               // std::cout << "Child is: ( "<< child.row << " , "<<child.col <<" )" <<std::endl;
 
                 if(itHas(closeSet,child))
+                {
+                    //std::cout << "It has this child" <<std::endl;
                     continue;
+                }
+
 
                 int newG = current.g + G_OFFSET_4;  //distance(current,child);
-                //TODO- Check this part
+
                 if (!itHas(openSet,child) || newG < child.g)
                 {
-                    child.parent = &current;
+                    //ROS_INFO("find the child");
+                    //child.parent = &current;
                     child.g = newG;
                     child.f = child.g + hValue(child);
+                    come_from[child.row][child.col] = current;
 
                     if (!itHas(openSet,child))
                     {
@@ -276,14 +298,18 @@ class PathFinder
     {
         vector<Node> path;
         nav_msgs::Path finalPath;
-        while(current.parent != NULL)
+
+        while(!(come_from[current.row][current.col].row == start.row && come_from[current.row][current.col].col == start.col))
         {
-            path.push_back(*current.parent);
-            //TODO
-            current = *current.parent;
+            //std::cout<< "Previous ROW is: "<< come_from[current.row][current.col].row << " and COL is: "<< come_from[current.row][current.col].col<<std::endl;
+            Node parent = come_from[current.row][current.col];
+            path.push_back(parent);
+            current = come_from[current.row][current.col];
         }
+
+
         // Should this be just larger than 0 or it could equal 0
-        for(int i = path.size(); i > 0; i--)
+        for(int i = path.size() - 1; i > 0; i--)
         {
            geometry_msgs::PoseStamped p;
            p.pose.position.x = path.at(i).row;
@@ -297,11 +323,44 @@ class PathFinder
         }
 
         finalPath.header.stamp = ros::Time::now();
-        finalPath.header.frame_id = "map";
+        //Frame_ID maybe wrong, as I could not show this in our case
+        finalPath.header.frame_id = "/map";
 
         return finalPath;
     }
 };
+
+nav_msgs::Path simpilifyPath(nav_msgs::Path path)
+{
+    nav_msgs::Path newPath;
+
+    int pathSize = path.poses.size();
+
+    for(int i = 0; i < pathSize - 1; i++)
+    {
+        for(int j = 1; j < pathSize; j++)
+        {
+            if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
+            {
+                //ROS_INFO("X value changes");
+                geometry_msgs::PoseStamped p;
+                p.pose.position.x = path.poses.at(i).pose.position.x;
+                p.pose.position.y = path.poses.at(i).pose.position.y;
+                p.pose.orientation.x = 0;
+                p.pose.orientation.y = 0;
+                p.pose.orientation.z = 0;
+                p.pose.orientation.w = 1;
+
+                newPath.poses.push_back(p);
+            }
+        }
+    }
+
+    newPath.header.stamp = ros::Time::now();
+    newPath.header.frame_id = "/map";
+
+    return newPath;
+}
 
 
 int main(int argc, char **argv)
@@ -329,32 +388,37 @@ int main(int argc, char **argv)
 //    goal.row = goalX;
 //    goal.col = goalY;
 
-    start.row = 10;
-    start.col = 12;
-    goal.row = 100;
-    goal.col = 100;
-    //PathFinder pathfind = new PathFinder(start,goal);
+    //row stands for the y-coordinate; col stands for the x value;
+    start.row = 20;
+    start.col = 20;
+    //row:60, col:200 is the one we couldn't find the path
+    goal.row = 20;//40;
+    goal.col = 220;//20;
+
     PathFinder pf(start,goal);
-    ROS_INFO("Here");
-    //std::cout<< "Start X: " << start.row <<std::endl;
 
-    nav_msgs::Path path =pf.getPath();
+    ros::Rate loop_rate(1);
 
-    ros::Rate loop_rate(10);
-
-
+    nav_msgs::Path path;
+     nav_msgs::Path simpilifiedPath;
 	while (ros::ok())
 	{
-        if(path.poses.size() < 0)
+        if(map->data.size() < 1000)
         {
-            ROS_INFO("No Path");
+            ROS_INFO("Map is not yet intialized");
         }
         else
         {
-          path_pub.publish(path);
+          ROS_INFO("Planning a path...");
+          path =pf.getPath();
+          if(path.poses.size() > 0)
+          {
+             simpilifiedPath = simpilifyPath(path);
+          }
+          path_pub.publish(simpilifiedPath);
+          //path_pub.publish(path);
         }
-
-		ros::spinOnce(); // Run the callbacks.
+        ros::spinOnce();
 		loop_rate.sleep();
 	}
 

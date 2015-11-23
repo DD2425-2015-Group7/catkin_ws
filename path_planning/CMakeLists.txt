@@ -159,6 +159,19 @@ target_link_libraries(Astar
   ${catkin_LIBRARIES}
 )
 
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
+add_executable(testReceiveMap src/testReceiveMap.cpp)
+add_dependencies(testReceiveMap ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(testReceiveMap
+  ${catkin_LIBRARIES}
+)
+
+
+
 #############
 ## Install ##
 #############
