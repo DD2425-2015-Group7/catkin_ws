@@ -23,40 +23,40 @@ class FunctionBlocks
         FunctionBlocks(void);
     
         //Vision and mapping.
-        classification::ClassifiedObjectArray processObject(void); //Blocking function.
-        void add2map(classification::ClassifiedObjectArray &);  //Includes cam_link -> map tf.
-        bool objectDetected(void);
+        classification::ClassifiedObjectArray processObject(void); //Blocking function. Aimen
+        void add2map(classification::ClassifiedObjectArray &);  //Includes cam_link -> map tf. Ondrej
+        bool objectDetected(void); //Aimen
         
         //Motion.
-        geometry_msgs::Pose randUniform(void);
-        double dist2goal(geometry_msgs::Pose&);
-        int time2goal(geometry_msgs::Pose&);
-        bool poseReached(geometry_msgs::Pose&, double radius, double yaw);
-        void go2goal(geometry_msgs::Pose&);
-        void turn(double yaw); //Blocking function.
-        void setWallFollower(bool on);
+        double dist2goal(geometry_msgs::Pose&); //Aimen
+        int time2goal(geometry_msgs::Pose&); //Aimen
+        bool poseReached(geometry_msgs::Pose&, double radius, double yaw); //Aimen
+        void go2goal(geometry_msgs::Pose&); //Aimen
+        void turn(double yaw); //Blocking function. Aimen
+        void setWallFollower(bool on); //Aimen
         
         //Decisions.
-        geometry_msgs::Pose exploreNext(void);
-        geometry_msgs::Pose fetchNext(void);
+        geometry_msgs::Pose randUniform(void); //Ondrej
+        geometry_msgs::Pose exploreNext(void); //Ondrej
+        geometry_msgs::Pose fetchNext(void); //Ondrej
         
         //User interface.
-        void speak(std::string text);
-        void sendEvidence(classification::ClassifiedObjectArray &);
+        void speak(std::string text); //Aimen
+        void sendEvidence(classification::ClassifiedObjectArray &); //Aimen
         void openDoor(void);
-        void startTimer(const int seconds);
-        int secondsLeft(void);
+        void startTimer(const int seconds); //Ondrej
+        int secondsLeft(void); //Ondrej
         
         //Localization.
-        void initPose(geometry_msgs::Pose&);
-        void initUnknown(void);
-        bool isLocalized(void);
-        void objects2localize(classification::ClassifiedObjectArray &);
+        void initPose(geometry_msgs::Pose&); //Ondrej
+        void initUnknown(void); //Ondrej
+        bool isLocalized(void); //Ondrej
+        void objects2localize(classification::ClassifiedObjectArray &); //Ondrej
         
     private:
         classification::ClassifiedObjectArray *objectsVision, *objectsMap;
         
-        int objectMapped(classification::ClassifiedObject &); //return index
+        int objectMapped(classification::ClassifiedObject &); //return index Aimen
         
 };
 

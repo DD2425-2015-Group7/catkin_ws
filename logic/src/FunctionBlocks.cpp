@@ -84,7 +84,7 @@ void FunctionBlocks::sendEvidence(classification::ClassifiedObjectArray &)
 
 void FunctionBlocks::openDoor(void)
 {
-    
+    this->speak("Starting.");
 }
 
 void FunctionBlocks::startTimer(const int seconds)
