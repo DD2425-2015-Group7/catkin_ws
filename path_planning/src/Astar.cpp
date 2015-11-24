@@ -4,7 +4,7 @@
 
 #include "std_msgs/String.h"
 
-//#include <tf/transform_listener.h>
+#include <tf/transform_listener.h>
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
@@ -19,6 +19,8 @@ double startY;
 
 double goalX;
 double goalY;
+
+double pathDistance = 0;
 
 #define G_OFFSET_4  10
 
@@ -355,6 +357,15 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
             }
         }
     }
+
+    for(int i = 1; i < path.poses.size(); i++)
+    {
+        pathDistance += (path.poses.at(i).pose.position.y - path.poses.at(i-1).pose.position.y)
+                    + (path.poses.at(i).pose.position.x - path.poses.at(i-1).pose.position.x);
+    }
+
+    // Return the distance in meters
+    pathDistance = pathDistance/100;
 
     newPath.header.stamp = ros::Time::now();
     newPath.header.frame_id = "/map";
