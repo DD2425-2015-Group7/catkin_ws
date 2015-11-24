@@ -142,11 +142,17 @@ int main(int argc, char **argv)
     fb = new FunctionBlocks();
 
     std::string behaviour;
-    n.param<std::string>("logic_behaviour", behaviour, "");
+    n.param<std::string>("logic_behaviour", behaviour, "test");
     if(behaviour.compare("explore") == 0){
         explore();
     }else if(behaviour.compare("fetch") == 0){
         fetch();
+    }else if(behaviour.compare("test") == 0){
+        ROS_INFO("Testing timer...");
+        if(fb->testTimer())
+            ROS_INFO("Timer works!");
+        else
+            ROS_INFO("Timer does not work.");
     }else{
         ROS_ERROR("Logic: Non-existent behaviour selected.");
     }

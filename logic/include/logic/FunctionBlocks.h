@@ -16,6 +16,7 @@
 
 #include <vector>
 #include <cmath>
+#include <time.h>
 
 class FunctionBlocks
 {
@@ -46,6 +47,7 @@ class FunctionBlocks
         void openDoor(void);
         void startTimer(const int seconds); //Ondrej
         int secondsLeft(void); //Ondrej
+        bool testTimer(void);
         
         //Localization.
         void initPose(geometry_msgs::Pose&); //Ondrej
@@ -54,6 +56,9 @@ class FunctionBlocks
         void objects2localize(classification::ClassifiedObjectArray &); //Ondrej
         
     private:
+        time_t time0;
+        int timeout;
+        
         classification::ClassifiedObjectArray *objectsVision, *objectsMap;
         
         int objectMapped(classification::ClassifiedObject &); //return index Aimen

@@ -2,7 +2,7 @@
 
 FunctionBlocks::FunctionBlocks(void)
 {
-    
+    this->timeout = 0;
 }
     
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
@@ -89,12 +89,36 @@ void FunctionBlocks::openDoor(void)
 
 void FunctionBlocks::startTimer(const int seconds)
 {
-    
+    timeout = seconds;
+    time0 = time(NULL);
+    assert(time0 != (time_t)(-1));
 }
 
 int FunctionBlocks::secondsLeft(void)
 {
-    return 100;
+    int ellapsed = (int) difftime(time(NULL), time0);
+    if(ellapsed >= timeout){
+        return 0;
+    }else{
+        return timeout - ellapsed;
+    }
+}
+
+bool FunctionBlocks::testTimer(void)
+{
+    startTimer(4);
+    assert(secondsLeft()==4);
+    sleep(1);
+    assert(secondsLeft()==3);
+    sleep(3);
+    assert(secondsLeft()==0);
+    sleep(2);
+    assert(secondsLeft()==0);
+    startTimer(2);
+    assert(secondsLeft()==2);
+    sleep(3);
+    assert(secondsLeft()==0);
+    return true;
 }
 
 void FunctionBlocks::initPose(geometry_msgs::Pose&)
