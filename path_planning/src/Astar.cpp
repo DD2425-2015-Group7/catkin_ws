@@ -137,7 +137,7 @@ class PathFinder
         if(isCanMove(row+1,col))
         {
             Node newNode;
-            newNode.row = row-1;
+            newNode.row = row+1;
             newNode.col = col;
             newNode.g = 999999999;//std::numeric_limits<int>::max();
             //System.out.println("Up");
@@ -147,13 +147,13 @@ class PathFinder
         if(isCanMove(row-1,col))
         {
             Node newNode;
-            newNode.row = row+1;
+            newNode.row = row-1;
             newNode.col = col;
             newNode.g = 999999999;//std::numeric_limits<int>::max();
             //System.out.println("Down");
             neighbours.push_back(newNode);
         }
-        //RightsetMap
+        //Right
         if(isCanMove(row,col+1))
         {
             Node newNode;
@@ -174,12 +174,6 @@ class PathFinder
             neighbours.push_back(newNode);
         }
         return neighbours;
-    }
-
-    //This is used to determine if we go 8 directions or 4 directions
-    int distance(Node current, Node child)
-    {
-        return 10 * abs(current.row - child.row) + abs(current.col - child.col);
     }
 
     int getPosition(vector<Node> nodeList, Node node)
@@ -313,9 +307,11 @@ class PathFinder
         // Should this be just larger than 0 or it could equal 0
         for(int i = path.size() - 1; i > 0; i--)
         {
+            //std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
            geometry_msgs::PoseStamped p;
-           p.pose.position.x = path.at(i).row;
-           p.pose.position.y = path.at(i).col;
+           //path.x should be the col value, right? TODO: check how the pub_points works. The coordinate must stay the same
+           p.pose.position.x = path.at(i).col;
+           p.pose.position.y = path.at(i).row;
            p.pose.orientation.x = 0;
            p.pose.orientation.y = 0;
            p.pose.orientation.z = 0;
@@ -324,9 +320,27 @@ class PathFinder
            finalPath.poses.push_back(p);
         }
 
+        //Add the goal point in the path. For some reason, the path will miss the two points(one is the goal and one the one before the goal), this could be a TODO;
+        geometry_msgs::PoseStamped p;
+        p.pose.position.x = goal.col;
+        p.pose.position.y = goal.row;
+        p.pose.orientation.x = 0;
+        p.pose.orientation.y = 0;
+        p.pose.orientation.z = 0;
+        p.pose.orientation.w = 1;
+
+        finalPath.poses.push_back(p);
+
         finalPath.header.stamp = ros::Time::now();
         //Frame_ID maybe wrong, as I could not show this in our case
         finalPath.header.frame_id = "/map";
+
+        //Show the Original path
+        std::cout<<"Original Path Size is: "<< finalPath.poses.size()<<std::endl;
+        for(int i = 0; i < finalPath.poses.size(); i++)
+        {
+            //std::cout<< "Original Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
+        }
 
         return finalPath;
     }
@@ -338,35 +352,66 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
 
     int pathSize = path.poses.size();
 
+    //checkY means we will check the y difference for the two points
+    bool checkY = true;
     for(int i = 0; i < pathSize - 1; i++)
     {
-        for(int j = 1; j < pathSize; j++)
-        {
-            if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
-            {
-                //ROS_INFO("X value changes");
-                geometry_msgs::PoseStamped p;
-                p.pose.position.x = path.poses.at(i).pose.position.x;
-                p.pose.position.y = path.poses.at(i).pose.position.y;
-                p.pose.orientation.x = 0;
-                p.pose.orientation.y = 0;
-                p.pose.orientation.z = 0;
-                p.pose.orientation.w = 1;
+       int j = i + 1;
+       if(checkY)
+       {
+           if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
+           {
+               //ROS_INFO("X value changes");
+               geometry_msgs::PoseStamped p;
+               p.pose.position.x = path.poses.at(i).pose.position.x;
+               p.pose.position.y = path.poses.at(i).pose.position.y;
+               p.pose.orientation.x = 0;
+               p.pose.orientation.y = 0;
+               p.pose.orientation.z = 0;
+               p.pose.orientation.w = 1;
 
-                newPath.poses.push_back(p);
+               newPath.poses.push_back(p);
+               checkY = false;
             }
-        }
+       }
+       else
+       {
+           if(path.poses.at(i).pose.position.x != path.poses.at(j).pose.position.x )
+           {
+               //ROS_INFO("X value changes");
+               geometry_msgs::PoseStamped p;
+               p.pose.position.x = path.poses.at(i).pose.position.x;
+               p.pose.position.y = path.poses.at(i).pose.position.y;
+               p.pose.orientation.x = 0;
+               p.pose.orientation.y = 0;
+               p.pose.orientation.z = 0;
+               p.pose.orientation.w = 1;
+
+               newPath.poses.push_back(p);
+               checkY = true;
+            }
+       }
     }
 
+    //Show the new path
+    std::cout<<"Simple Path Size is: "<< newPath.poses.size()<<std::endl;
+    for(int i = 0; i < newPath.poses.size(); i++)
+    {
+        //std::cout<< "Simplified Path No." << i <<" point is X: "<< newPath.poses.at(i).pose.position.x << " Y :" << newPath.poses.at(i).pose.position.y << std::endl;
+    }
+
+
+    //Used to calculate the distance
     for(int i = 1; i < path.poses.size(); i++)
     {
-        pathDistance += (path.poses.at(i).pose.position.y - path.poses.at(i-1).pose.position.y)
-                    + (path.poses.at(i).pose.position.x - path.poses.at(i-1).pose.position.x);
+        pathDistance += fabs((path.poses.at(i).pose.position.y - path.poses.at(i-1).pose.position.y)
+                    + (path.poses.at(i).pose.position.x - path.poses.at(i-1).pose.position.x));
     }
 
     // Return the distance in meters
     pathDistance = pathDistance/100;
-
+    ROS_INFO("Here");
+    std::cout<<"Path distance(in meters) is : " << pathDistance << std::endl;
     newPath.header.stamp = ros::Time::now();
     newPath.header.frame_id = "/map";
 
@@ -400,12 +445,12 @@ int main(int argc, char **argv)
 //    goal.col = goalY;
 
     //row stands for the y-coordinate; col stands for the x value;
-    start.row = 20;
-    start.col = 20;
-    //row:60, col:200 is the one we couldn't find the path
-    goal.row = 20;//40;
-    goal.col = 220;//20;
-
+    start.row = 211;//92;//20;
+    start.col = 200;//38;//193;//20;
+    //row:90, col:36 is the one we couldn't find the path
+    goal.row = 73;//90;//216;//211;//90;//73;//25;//20;//40;
+    goal.col = 186      ;//36;//104;//200;//36;//186;//200;//220;//20;
+    //Interesting points: (row,col) it works from(194,95) to (218,27), while not for the reversed one
     PathFinder pf(start,goal);
 
     ros::Rate loop_rate(1);
@@ -421,13 +466,13 @@ int main(int argc, char **argv)
         else
         {
           ROS_INFO("Planning a path...");
-          path =pf.getPath();
+          path = pf.getPath();
           if(path.poses.size() > 0)
           {
              simpilifiedPath = simpilifyPath(path);
           }
-          path_pub.publish(simpilifiedPath);
-          //path_pub.publish(path);
+          //path_pub.publish(simpilifiedPath);
+            path_pub.publish(path);
         }
         ros::spinOnce();
 		loop_rate.sleep();
