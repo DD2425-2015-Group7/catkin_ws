@@ -23,8 +23,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     
     espeak_pub = new ros::Publisher();;
     vision_sub = new ros::Subscriber();
-    espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
-    vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000);
+    *espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
+    *vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000, &FunctionBlocks::visionCB, this);
       
     n.param<std::string>("map_frame", MapFrameName, "map"); 
     n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
@@ -34,6 +34,9 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     countObjDetected = 0;
 }
     
+void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
+}
+
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
     classification::ClassifiedObjectArray ca;

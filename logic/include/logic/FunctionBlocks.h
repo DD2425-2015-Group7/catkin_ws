@@ -64,6 +64,8 @@ class FunctionBlocks
         bool isLocalized(void); //Ondrej
         void objects2localize(classification::ClassifiedObjectArray &); //Ondrej
         
+	void visionCB(const classification::ClassifiedObjectArray::ConstPtr &);
+
     private:
         time_t time0;
         int timeout;
@@ -83,7 +85,7 @@ class FunctionBlocks
         int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y);
         int objectMapped(classification::ClassifiedObject &); //return index Aimen
         
-	std::string MapFrameName, TargetFrameName;
+	std::string MapFrameName, RobotFrameName;
 	
 	tf::TransformListener *tf_listener;
 
