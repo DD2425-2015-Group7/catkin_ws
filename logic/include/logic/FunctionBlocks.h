@@ -3,9 +3,12 @@
 
 #include "ros/ros.h"
 #include "geometry_msgs/Pose.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Point.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "tf/transform_listener.h"
 #include "tf/transform_broadcaster.h"
+#include "tf/tf.h"
 #include "math.h"
 
 #include "map_tools/AddEllipse.h"
@@ -18,6 +21,8 @@
 #include <cmath>
 #include <time.h>
 #include <random>
+
+#include "std_msgs/String.h"
 
 class FunctionBlocks
 {
@@ -69,13 +74,20 @@ class FunctionBlocks
         nav_msgs::OccupancyGrid *mapInflated;
         ros::ServiceClient *map_client;
         ros::Publisher *init_mcl_pub;
-        
+	ros::Publisher *espeak_pub;
+	ros::Subscriber *vision_sub;
+
         classification::ClassifiedObjectArray *objectsVision, *objectsMap;
         
         bool updateMap(void);
         int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y);
         int objectMapped(classification::ClassifiedObject &); //return index Aimen
         
+	std::string MapFrameName, TargetFrameName;
+	
+	tf::TransformListener *tf_listener;
+
+	int countObjDetected; 
 };
 
 #endif

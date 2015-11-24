@@ -7,7 +7,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     n.param<int>("map_occupied_min_threshold", this->minOccupied, 10);
     init_mcl_pub = new ros::Publisher();
     *init_mcl_pub = n.advertise<geometry_msgs::Pose>("/mcl/initial_pose", 2, true); //use latch
-    
+
     //Wait 8 s for the map service.
     if(!ros::service::waitForService("/map_node/get_map", 8000)){ 
         ROS_ERROR("Map service unreachable.");
@@ -20,6 +20,18 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     
     objectsVision = new classification::ClassifiedObjectArray();
     objectsMap = new classification::ClassifiedObjectArray();
+    
+    espeak_pub = new ros::Publisher();;
+    vision_sub = new ros::Subscriber();
+    espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
+    vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000);
+      
+    n.param<std::string>("map_frame", MapFrameName, "map"); 
+    n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
+    
+    tf_listener = new tf::TransformListener();
+    
+    countObjDetected = 0;
 }
     
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
@@ -91,7 +103,7 @@ geometry_msgs::Pose FunctionBlocks::randUniform(void)
 
 double FunctionBlocks::dist2goal(geometry_msgs::Pose&)
 {
-    return 0.6;
+  return 0.3;
 }
     
 int FunctionBlocks::time2goal(geometry_msgs::Pose&)
@@ -169,7 +181,9 @@ geometry_msgs::Pose FunctionBlocks::fetchNext(void)
 
 void FunctionBlocks::speak(std::string text)
 {
-    
+  std_msgs::String msg; 
+  msg.data = text; 
+  this->espeak_pub->publish(msg);
 }
 
 void FunctionBlocks::sendEvidence(classification::ClassifiedObjectArray &)
