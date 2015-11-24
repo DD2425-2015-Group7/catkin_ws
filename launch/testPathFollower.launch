@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+  <node pkg="rosserial_python" type="serial_node.py" respawn="false" name="serial_node" output="screen" args="_port:=/dev/ttyACM0"/>
+  <include file="$(find ir_sensors)/launch/publish.launch" />
+  <include file="$(find motion_controllers)/launch/pwm_control.launch" />
+  <include file="$(find localization)/launch/localize.launch" />
+  <include file="$(find path_planning)/launch/bag_planner.launch" />
+  <include file="$(find map_tools)/launch/map.launch" />
+
+  <node pkg="motion_controllers" type="pub_points_list" respawn="false" name="pub_points_list" output="screen">
+
+
+</launch> 

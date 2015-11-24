@@ -53,15 +53,39 @@ States state;
 //No need to care about the front sensors, right?
 void distanceCallback(const ir_sensors::RangeArray::ConstPtr &msg)
 {
-    assert(msg->array.size() == 6);
+    // what's this one
+      //assert(msg->array.size() == 6);
 
     distance_lefts_front = msg->array[0].range;
     distance_lefts_back = msg->array[1].range;
     distance_rights_front = msg->array[4].range;
     distance_rights_back = msg->array[5].range;
-//    distance_front_left = msg->array[2].range;
-//    distance_front_right = msg->array[3].range;
 
+}
+
+
+void kobukiDistanceCallback(const ras_arduino_msgs::ADConverter::ConstPtr &msg)
+{
+    /*
+     * Information about the Kobuki IR sensors
+     *
+        Frame: distance_sensor_front_left_link; reported on adc channel 1.
+        Frame: distance_sensor_back_left_link; reported on adc channel 2.
+        Frame: distance_sensor_front_right_link; reported on adc channel 3.
+        Frame: distance_sensor_back_right_link; reported on adc channel 4.
+        Frame: distance_sensor_forward_right_link; reported on adc channel 5.
+        Frame: distance_sensor_forward_left_link; reported on adc channel 6.
+    */
+
+   // Kobuki ADC setting
+        distance_lefts_front = msg->ch1 ;
+        std::cout<< "Left front sensors"<< distance_lefts_front<<std::endl;
+        distance_lefts_back = msg->ch2;
+        std::cout<< "Left back sensors"<< distance_lefts_back<<std::endl;
+        distance_rights_front = msg->ch3;
+        std::cout<< "Right front sensors"<< distance_rights_back<<std::endl;
+        distance_rights_back = msg->ch4;
+        std::cout<< "Right back sensors"<< distance_rights_back<<std::endl;
 }
 
 
@@ -98,13 +122,14 @@ int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "path_follower");
     ros::NodeHandle handle;
-    //ros::Subscriber sub_IRdist = handle.subscribe("/ir_publish/sensors", 1000, distanceCallback);
-    ros::Subscriber sub_IRdist = handle.subscribe("/kobuki/adc", 1000, distanceCallback);
     ros::Subscriber sub_posi = handle.subscribe("/path_pose", 1000, setPosition);
-    //ros::Subscriber sub_posi = handle.subscribe("path", 1000, setPosition);
 
-    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
-    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
+    ros::Subscriber sub_IRdist = handle.subscribe("/ir_publish/sensors", 1000, distanceCallback);
+    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
+
+    // These two lines are for kobuki simulation
+    //ros::Subscriber sub_IRdist = handle.subscribe("/kobuki/adc", 1000, kobukiDistanceCallback);
+    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
     geometry_msgs::Twist t;
     ros::Rate loopRate(10);
 
