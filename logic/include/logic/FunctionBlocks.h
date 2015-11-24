@@ -17,6 +17,7 @@
 #include <vector>
 #include <cmath>
 #include <time.h>
+#include <random>
 
 class FunctionBlocks
 {
@@ -37,8 +38,10 @@ class FunctionBlocks
         void setWallFollower(bool on); //Aimen
         
         //Decisions.
+        bool isPointFree(double x, double y);
         geometry_msgs::Pose randUniform(void); //Ondrej
         geometry_msgs::Pose exploreNext(void); //Ondrej
+        void testExploration(void);
         geometry_msgs::Pose fetchNext(void); //Ondrej
         
         //User interface.
@@ -60,10 +63,17 @@ class FunctionBlocks
         time_t time0;
         int timeout;
         
+        double mapXsz, mapYsz;
+        int minOccupied;
+        
+        nav_msgs::OccupancyGrid *mapInflated;
+        ros::ServiceClient *map_client;
         ros::Publisher *init_mcl_pub;
         
         classification::ClassifiedObjectArray *objectsVision, *objectsMap;
         
+        bool updateMap(void);
+        int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y);
         int objectMapped(classification::ClassifiedObject &); //return index Aimen
         
 };

@@ -86,6 +86,8 @@ void fetchAndReport(classification::ClassifiedObjectArray& objectArray)
     const int rate = 5;
     ros::Rate loop_rate(rate);
     geometry_msgs::Pose goal = fb->fetchNext();
+    //TODO: remove visited objects from the right stack and in the right function!
+    //      compare fb->fetchNext() and fb->sendEvidence(objectArray)
     do{
         fb->go2goal(goal);
         if(fb->poseReached(goal, radiusTolerance, yawTolerance)){
@@ -149,7 +151,9 @@ int main(int argc, char **argv)
         fetch();
     }else if(behaviour.compare("test") == 0){
         ROS_INFO("Testing...");
-        fb->testMclInit();
+        fb->testExploration();
+        fb->fetchNext();
+        //fb->testMclInit();
         //fb->testTimer();
         ROS_INFO("It works!");
     }else{
