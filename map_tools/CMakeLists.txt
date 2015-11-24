@@ -59,6 +59,7 @@ pkg_search_module(CAIRO REQUIRED cairo)
 add_service_files(
    FILES
    AddEllipse.srv
+   AddObjects.srv
    GetMap.srv
 )
 
@@ -75,6 +76,7 @@ generate_messages(
   std_msgs
   geometry_msgs
   nav_msgs
+  classification
 )
 
 ################################################

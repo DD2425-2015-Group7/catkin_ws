@@ -151,9 +151,10 @@ int main(int argc, char **argv)
         fetch();
     }else if(behaviour.compare("test") == 0){
         ROS_INFO("Testing...");
+        fb->testMclInit();
         fb->testExploration();
         fb->fetchNext();
-        //fb->testMclInit();
+        fb->testAdd2Map();
         //fb->testTimer();
         ROS_INFO("It works!");
     }else{

@@ -13,13 +13,23 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
         ROS_ERROR("Map service unreachable.");
         return;
     }
-    mapInflated = new nav_msgs::OccupancyGrid();
-    map_client = new ros::ServiceClient();
-    *map_client = n.serviceClient<map_tools::GetMap>("/map_node/get_map");
-    updateMap();
+    
+    //Wait 2 s for the add objects to map service.
+    if(!ros::service::waitForService("/map_node/add_objects", 2000)){ 
+        ROS_ERROR("Add objects to map service unreachable.");
+        return;
+    }
     
     objectsVision = new classification::ClassifiedObjectArray();
     objectsMap = new classification::ClassifiedObjectArray();
+    
+    mapInflated = new nav_msgs::OccupancyGrid();
+    map_client = new ros::ServiceClient();
+    *map_client = n.serviceClient<map_tools::GetMap>("/map_node/get_map");
+    add_objects_client = new ros::ServiceClient();
+    *add_objects_client = n.serviceClient<map_tools::AddObjects>("/map_node/add_objects");
+    updateMap();
+    
     
     espeak_pub = new ros::Publisher();;
     vision_sub = new ros::Subscriber();
@@ -43,9 +53,58 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
     return ca;
 }
 
-void FunctionBlocks::add2map(classification::ClassifiedObjectArray &)
+void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
 {
     
+}
+
+void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
+{
+    geometry_msgs::PointStamped p0, p1;
+    p0.header.frame_id = objects.header.frame_id;
+    p0.header.stamp = objects.header.stamp;
+    
+    try{
+      tf_listener->waitForTransform(MapFrameName, p0.header.frame_id, p0.header.stamp, ros::Duration(1.0) );
+    }catch(tf::TransformException &ex){
+        ROS_ERROR("%s",ex.what());
+        return;
+    }
+    
+    objects.header.frame_id = MapFrameName;
+    for(int i = 0; i < objects.objects.size(); i++){
+        p0.point = objects.objects[i].p;
+        try{
+          tf_listener->transformPoint(MapFrameName, p0, p1);
+        }catch(tf::TransformException &ex){
+            ROS_ERROR("%s",ex.what());
+            return;
+        }
+        objects.objects[i].p = p1.point;
+        setViewPose(objects.objects[i]);
+    }
+    
+    this->sendObjects(objects);
+    this->updateMap();
+}
+
+void FunctionBlocks::testAdd2Map(void)
+{
+    classification::ClassifiedObjectArray objects;
+    classification::ClassifiedObject obj;
+    objects.header.frame_id = "cam_link";
+    objects.header.stamp = ros::Time::now();
+    obj.name = "red_cube";
+    obj.id = 1;
+    obj.p.x = 0.4;
+    obj.p.y = 0.5;
+    objects.objects.push_back(obj);
+    obj.name = "debris";
+    obj.id = 13;
+    obj.p.x = 0.4;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    this->add2map(objects);
 }
 
 bool FunctionBlocks::objectDetected(void)
@@ -53,16 +112,28 @@ bool FunctionBlocks::objectDetected(void)
     return false;
 }
 
+bool FunctionBlocks::sendObjects(classification::ClassifiedObjectArray& objects)
+{
+    map_tools::AddObjects srv;
+    srv.request.array = objects;
+    if (!add_objects_client->call(srv)){
+        ROS_ERROR("Failed to call service AddObjects.");
+        return false;
+    }
+    return true;
+}
+
 bool FunctionBlocks::updateMap(void)
 {
     map_tools::GetMap srv2;
-    srv2.request.type.data = "inflated";
+    srv2.request.type.data = "inflated_obj";
     if (map_client->call(srv2)){
         *mapInflated = srv2.response.map;
+        *objectsMap = srv2.response.mappedObjects;
         mapXsz = mapInflated->info.width * mapInflated->info.resolution;
         mapYsz = mapInflated->info.height * mapInflated->info.resolution;
     }else{
-        ROS_ERROR("Failed to call service GetMap (inflated).");
+        ROS_ERROR("Failed to call service GetMap (inflated_obj).");
         return false;
     }
     return true;
@@ -259,12 +330,14 @@ void FunctionBlocks::testMclInit(void)
     pose.position.y = 0.2;
     pose.orientation = tf::createQuaternionMsgFromYaw(0);
     initPose(pose);
+    /*
     sleep(2);
     initUnknown();
     sleep(2);
     initPose(pose);
     sleep(2);
     initPose(pose);
+    */
 }
 
 bool FunctionBlocks::isLocalized(void)

@@ -11,9 +11,10 @@
 
 class MapStorage{
     public:
-        MapStorage(double cellSize, int fullyOccupied = 100, double inflationRadius = 0.01);
+        MapStorage(double cellSize, int fullyOccupied = 100, int minOccupied = 10, double inflationRadius = 0.01);
         void stackWall(double x0, double y0, double x1, double y1, double thickness);
         void stackEllipse(double x, double y, double a, double b, double th);
+        void clearEllipses(void);
 
         void loadWalls(std::string fn, double thickness);
         void renderGrid(void);
@@ -44,7 +45,7 @@ class MapStorage{
         double cellSz, inflationRadius, xMax, yMax;
         std::vector<Wall> wallSt;
         std::vector<Ellipse> ellipseSt;
-        int fullyOccupied;
+        int fullyOccupied, minOccupied;
         cairo_surface_t *surface;
         cairo_t *cr;
         nav_msgs::OccupancyGrid *map, *distMap, *inflMap;

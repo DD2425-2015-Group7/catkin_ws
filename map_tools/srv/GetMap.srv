@@ -1,3 +1,4 @@
 std_msgs/String type
 ---
 nav_msgs/OccupancyGrid map
+classification/ClassifiedObjectArray mappedObjects

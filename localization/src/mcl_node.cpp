@@ -318,6 +318,10 @@ int main(int argc, char **argv)
         publishTransform();
 		ros::spinOnce();
 		loop_rate.sleep();
+        
+        ros::Duration last_update = ros::Time::now() - current_time;
+        if(last_update > ros::Duration(0.15))
+            current_time = ros::Time::now();
 	}
 
 

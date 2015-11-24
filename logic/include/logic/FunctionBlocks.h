@@ -5,6 +5,7 @@
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
+#include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "tf/transform_listener.h"
 #include "tf/transform_broadcaster.h"
@@ -12,6 +13,7 @@
 #include "math.h"
 
 #include "map_tools/AddEllipse.h"
+#include "map_tools/AddObjects.h"
 #include "map_tools/GetMap.h"
 
 #include "classification/ClassifiedObject.h"
@@ -32,6 +34,9 @@ class FunctionBlocks
         //Vision and mapping.
         classification::ClassifiedObjectArray processObject(void); //Blocking function. Aimen
         void add2map(classification::ClassifiedObjectArray &);  //Includes cam_link -> map tf. Ondrej
+        bool sendObjects(classification::ClassifiedObjectArray& objects);
+        void setViewPose(classification::ClassifiedObject& obj); //TODO
+        void testAdd2Map(void);
         bool objectDetected(void); //Aimen
         
         //Motion.
@@ -74,7 +79,7 @@ class FunctionBlocks
         int minOccupied;
         
         nav_msgs::OccupancyGrid *mapInflated;
-        ros::ServiceClient *map_client;
+        ros::ServiceClient *map_client, *add_objects_client;
         ros::Publisher *init_mcl_pub;
 	ros::Publisher *espeak_pub;
 	ros::Subscriber *vision_sub;
@@ -93,4 +98,3 @@ class FunctionBlocks
 };
 
 #endif
-

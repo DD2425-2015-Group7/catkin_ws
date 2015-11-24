@@ -1,11 +1,12 @@
 #include "map_tools/MapStorage.h"
 
 
-MapStorage::MapStorage(double cellSize, int fullyOccupied, double inflationRadius)
+MapStorage::MapStorage(double cellSize, int fullyOccupied, int minOccupied, double inflationRadius)
 {
     assert(cellSize>1e-10);
     this->cellSz = cellSize;
     this->fullyOccupied = fullyOccupied;
+    this->minOccupied = minOccupied;
     this->inflationRadius = inflationRadius;
     map = new nav_msgs::OccupancyGrid();
     distMap = new nav_msgs::OccupancyGrid();
@@ -88,14 +89,14 @@ int MapStorage::nnDist(int xi, int yi)
 {
     int w = map->info.width;
     int h = map->info.height;
-    if(map->data[yi*w + xi] >= fullyOccupied)
+    if(map->data[yi*w + xi] >= minOccupied)
         return 0;
     const int maxLevel = 50;
     int level = 1, dist = maxLevel, x = xi, y = yi, d;
     while(level<maxLevel){
         y = max(yi - level, 0); 
         for(x = max(xi-level, 0); x < min(xi+level, w); x++){
-            if(map->data[y*w + x] >= fullyOccupied){
+            if(map->data[y*w + x] >= minOccupied){
                 d = boundedDist(x-xi, y-yi, maxLevel);
                 if(d<dist)
                     dist = d;
@@ -103,7 +104,7 @@ int MapStorage::nnDist(int xi, int yi)
         }
         y = min(yi + level, h); 
         for(x = max(xi-level, 0); x < min(xi+level, w); x++){
-            if(map->data[y*w + x] >= fullyOccupied){
+            if(map->data[y*w + x] >= minOccupied){
                 d = boundedDist(x-xi, y-yi, maxLevel);
                 if(d<dist)
                     dist = d;
@@ -111,7 +112,7 @@ int MapStorage::nnDist(int xi, int yi)
         }
         x = max(xi - level, 0); 
         for(y = max(yi-level, 0); y < min(yi+level, h); y++){
-            if(map->data[y*w + x] >= fullyOccupied){
+            if(map->data[y*w + x] >= minOccupied){
                 d = boundedDist(x-xi, y-yi, maxLevel);
                 if(d<dist)
                     dist = d;
@@ -119,7 +120,7 @@ int MapStorage::nnDist(int xi, int yi)
         }
         x = min(xi + level, w); 
         for(y = max(yi-level, 0); y < min(yi+level, h); y++){
-            if(map->data[y*w + x] >= fullyOccupied){
+            if(map->data[y*w + x] >= minOccupied){
                 d = boundedDist(x-xi, y-yi, maxLevel);
                 if(d<dist)
                     dist = d;
@@ -174,6 +175,11 @@ void MapStorage::stackWall(double x0, double y0, double x1, double y1, double th
 void MapStorage::stackEllipse(double x, double y, double a, double b, double th)
 {
     ellipseSt.push_back(MapStorage::Ellipse(x,y,a,b,th));
+}
+
+void MapStorage::clearEllipses(void)
+{
+    ellipseSt.clear();
 }
 
 
