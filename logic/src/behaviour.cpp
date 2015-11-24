@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 	ros::NodeHandle n("/behaviour");
     
     startPose = new geometry_msgs::Pose();
-    fb = new FunctionBlocks();
+    fb = new FunctionBlocks(n);
 
     std::string behaviour;
     n.param<std::string>("logic_behaviour", behaviour, "test");
@@ -148,11 +148,10 @@ int main(int argc, char **argv)
     }else if(behaviour.compare("fetch") == 0){
         fetch();
     }else if(behaviour.compare("test") == 0){
-        ROS_INFO("Testing timer...");
-        if(fb->testTimer())
-            ROS_INFO("Timer works!");
-        else
-            ROS_INFO("Timer does not work.");
+        ROS_INFO("Testing...");
+        fb->testMclInit();
+        //fb->testTimer();
+        ROS_INFO("It works!");
     }else{
         ROS_ERROR("Logic: Non-existent behaviour selected.");
     }

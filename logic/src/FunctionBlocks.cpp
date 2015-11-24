@@ -1,8 +1,10 @@
 #include "logic/FunctionBlocks.h"
 
-FunctionBlocks::FunctionBlocks(void)
+FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 {
     this->timeout = 0;
+    init_mcl_pub = new ros::Publisher();
+    *init_mcl_pub = n.advertise<geometry_msgs::Pose>("/mcl/initial_pose", 2, true); //use latch
 }
     
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
@@ -121,14 +123,38 @@ bool FunctionBlocks::testTimer(void)
     return true;
 }
 
-void FunctionBlocks::initPose(geometry_msgs::Pose&)
+void FunctionBlocks::initPose(geometry_msgs::Pose& p)
 {
-    
+    p.position.z = 0.0;
+    ros::Rate loop_rate(5);
+    loop_rate.sleep();
+    init_mcl_pub->publish(p);
 }
 
 void FunctionBlocks::initUnknown(void)
 {
-    
+    geometry_msgs::Pose p;
+    p.position.x = 0;
+    p.position.y = 0;
+    p.position.z = 2.0;
+    ros::Rate loop_rate(5);
+    loop_rate.sleep();
+    init_mcl_pub->publish(p);
+}
+
+void FunctionBlocks::testMclInit(void)
+{
+    geometry_msgs::Pose pose;
+    pose.position.x = 0.13;
+    pose.position.y = 0.2;
+    pose.orientation = tf::createQuaternionMsgFromYaw(0);
+    initPose(pose);
+    sleep(2);
+    initUnknown();
+    sleep(2);
+    initPose(pose);
+    sleep(2);
+    initPose(pose);
 }
 
 bool FunctionBlocks::isLocalized(void)

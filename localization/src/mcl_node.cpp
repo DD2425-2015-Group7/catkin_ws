@@ -23,7 +23,9 @@ typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, ir_s
 
 std::string odomFrame, baseFrame, mapFrame;
 double irSigma;
+double initConeRadius, initYawVar;
 int minOccupied;
+bool mclEnabled = false;
 
 std::mutex mtx;
 struct Poses{
@@ -59,7 +61,7 @@ void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sens
     ps.header.stamp = ir_msg->header.stamp;
     ps.pose.position.y = 0;
     ps.pose.position.z = 0;
-    ps.pose.orientation = tf::createQuaternionMsgFromYaw(0);;
+    ps.pose.orientation = tf::createQuaternionMsgFromYaw(0);
     
     for(int i = 0; i < ir_msg->array.size(); i++){
         s.sigma = irSigma * ir_msg->array[i].max_range;
@@ -109,6 +111,27 @@ bool updateMap(void)
         return false;
     }
     return true;
+}
+
+void initMcl(const geometry_msgs::Pose::ConstPtr& p)
+{
+    double csz = mapInflated->info.resolution;
+    double wc = ((double)mapInflated->info.width);
+    double hc = ((double)mapInflated->info.height);
+    assert(csz > 0.00001);
+    if(p->position.z < 0.01){
+        struct PoseState pose;
+        pose.set(0);
+        pose.x = p->position.x;
+        pose.y = p->position.y;
+        pose.yaw = tf::getYaw(p->orientation);
+        mc->init(pose, initConeRadius, initYawVar, wc*csz, hc*csz);
+        ROS_INFO("MCL init pose.");
+    }else{
+        mc->init(wc*csz, hc*csz);
+        ROS_INFO("MCL init unknown.");
+    }
+    mclEnabled = true;
 }
 
 void runMonteCarlo(void)
@@ -215,7 +238,7 @@ int main(int argc, char **argv)
     n.param<double>("ir_model_z_random_over_z_max", irZrm, 0.05);
     
     int nParticles, rate;
-    double initConeRadius, initYawVar, minDelta, aslow, afast;
+    double minDelta, aslow, afast;
     double crashRadius, crashYaw, stdXY, stdYaw;
     n.param<int>("mcl_particles", nParticles, 200);
     n.param<int>("mcl_rate", rate, 5);
@@ -264,14 +287,18 @@ int main(int argc, char **argv)
     pose.x += coords.x0;
     pose.y += coords.y0;
     om = new OdometryModel(odom_a1, odom_a2, odom_a3, odom_a4);
+    
+    mclEnabled = false;
+    coords.x = coords.x0;
+    coords.y = coords.y0;
+    coords.th = 0.0;
+    
     mc = new MonteCarlo(om, &isPointFree, nParticles, minDelta,
                         aslow, afast, crashRadius, crashYaw, goodStd);
-    double csz = mapInflated->info.resolution;
-    assert(csz > 0.00001);
-    mc->init(pose, initConeRadius, initYawVar, ((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
-    //mc->init(((double)mapInflated->info.width)*csz, ((double)mapInflated->info.height)*csz);
     irm = new RangeModel(&getDist, irZhit, irZrm);
     mc->addSensor(irm);
+    
+    ros::Subscriber init_mcl_sub = n.subscribe<geometry_msgs::Pose>("/mcl/initial_pose", 2, initMcl);
     
 
     current_time = ros::Time::now();
@@ -283,10 +310,12 @@ int main(int argc, char **argv)
         if(!updateMap()){
             return -1;
         }
-        runMonteCarlo();
+        if(mclEnabled){
+            runMonteCarlo();
+            particles2PoseArray(mc->getParticles(), poseArray);
+            particle_pub_obj.publish(poseArray);
+        }
         publishTransform();
-        particles2PoseArray(mc->getParticles(), poseArray);
-        particle_pub_obj.publish(poseArray);
 		ros::spinOnce();
 		loop_rate.sleep();
 	}

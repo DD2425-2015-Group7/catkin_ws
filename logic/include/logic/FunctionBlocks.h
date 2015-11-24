@@ -21,7 +21,7 @@
 class FunctionBlocks
 {
     public:
-        FunctionBlocks(void);
+        FunctionBlocks(ros::NodeHandle& n);
     
         //Vision and mapping.
         classification::ClassifiedObjectArray processObject(void); //Blocking function. Aimen
@@ -52,12 +52,15 @@ class FunctionBlocks
         //Localization.
         void initPose(geometry_msgs::Pose&); //Ondrej
         void initUnknown(void); //Ondrej
+        void testMclInit(void);
         bool isLocalized(void); //Ondrej
         void objects2localize(classification::ClassifiedObjectArray &); //Ondrej
         
     private:
         time_t time0;
         int timeout;
+        
+        ros::Publisher *init_mcl_pub;
         
         classification::ClassifiedObjectArray *objectsVision, *objectsMap;
         
