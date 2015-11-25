@@ -118,12 +118,6 @@ int main(int argc, char **argv)
         double right_average = (distance_rights_front + distance_rights_back)/2;
         double left_average = (distance_lefts_front + distance_lefts_back)/2;
 
-        if (!flagReady) {
-            ros::spinOnce();
-            loop_rate.sleep();
-            continue;
-        }
-
         // Update of the state
         if(front){ // The front is the most prior
             if(right_average > left_average){
