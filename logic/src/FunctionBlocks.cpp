@@ -63,6 +63,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     countObjDetected = 0;
 
     odomReady = false;
+
+    objDetectTimeout = 25;
 }
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
@@ -217,6 +219,8 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
      verifiedObjects.objects.push_back(it_obj->second);
    }
    
+   objDetectTimeout = 0;
+
    return verifiedObjects;
 }
 
@@ -277,7 +281,14 @@ void FunctionBlocks::testAdd2Map(void)
 bool FunctionBlocks::objectDetected(void)
 {
   int threshold_vision = 25;
-  return (objectsVision->objects.size() > threshold_vision);
+
+  if (objDetectTimeout > 24) {
+    return (objectsVision->objects.size() > threshold_vision);
+  } else {
+    objDetectTimeout++; 
+    return false;
+  }
+
 }
 
 bool FunctionBlocks::sendObjects(classification::ClassifiedObjectArray& objects)

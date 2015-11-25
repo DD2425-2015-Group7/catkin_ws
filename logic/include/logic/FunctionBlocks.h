@@ -117,6 +117,8 @@ class FunctionBlocks
 
 	geometry_msgs::Pose odomPose;
 
+	int objDetectTimeout;
+
 };
 
 #endif
