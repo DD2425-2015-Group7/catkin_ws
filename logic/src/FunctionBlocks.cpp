@@ -20,6 +20,12 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
         return;
     }
     
+    //Wait 2 s for the add objects to map service.
+    if(!ros::service::waitForService("/Astart/pathTest", 2000)){ 
+      ROS_ERROR("GetPath service unreachable.");
+      return;
+    }
+    
     objectsVision = new classification::ClassifiedObjectArray();
     objectsMap = new classification::ClassifiedObjectArray();
     
@@ -30,27 +36,188 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *add_objects_client = n.serviceClient<map_tools::AddObjects>("/map_node/add_objects");
     updateMap();
     
-    
+    getPath_client = new ros::ServiceClient();
+    *getPath_client = n.serviceClient<path_planning::GetPath>("/Astar/pathTest");
+
+
     espeak_pub = new ros::Publisher();;
     vision_sub = new ros::Subscriber();
+    odom_sub = new ros::Subscriber();
+    wallfol_pub = new ros::Publisher();
+    evidence_pub = new ros::Publisher();
+    twist_pub = new ros::Publisher();
+    goalPose_pub = new ros::Publisher();
     *espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
     *vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000, &FunctionBlocks::visionCB, this);
-      
+    *odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 1000, &FunctionBlocks::odomCB, this);
+    *wallfol_pub = n.advertise<std_msgs::Bool>("/wallFollower", 1000);
+    *evidence_pub = n.advertise<ras_msgs::RAS_Evidence>("/evidence", 1000);
+    *twist_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
+    *goalPose_pub = n.advertise<geometry_msgs::Pose>("/goal_pose",1000);
+
     n.param<std::string>("map_frame", MapFrameName, "map"); 
     n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
     
     tf_listener = new tf::TransformListener();
     
     countObjDetected = 0;
+
+    odomReady = false;
 }
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
+  static int count = 0;
+  
+  if (count > 12) {
+    if ( msg->objects.size() < 5 ) {
+      objectsVision->objects.clear();
+    }
+    count = 0;
+  }
+  count++;
+
+   for (int i=0; i < msg->objects.size(); i++) {
+      objectsVision->objects.push_back(msg->objects[i]);
+    }
+}
+
+void FunctionBlocks::odomCB(const nav_msgs::Odometry::ConstPtr& msg) {
+  odomReady = true;
+  odomPose = msg->pose.pose;
+}
+
+double FunctionBlocks::smoothUpdateVelocity(double current, double required, double step)
+{
+    double diff = current - required;
+    if(fabs(diff) > 1.5*step)
+    {
+       current -= (diff > 0) ? step : -step;
+    }
+    else
+    {
+        current = required;
+    }
+    return current;
+}
+
+void FunctionBlocks::turn(double yaw) 
+{
+  const int rate = 10;
+  ros::Rate loop_rate(rate);
+  int timout = 2;
+  int i = 0;
+  float a_speed = 1.5;
+
+  geometry_msgs::Twist twist;
+  twist.linear.x = 0;
+  twist.angular.z = 0;
+
+  twist_pub->publish(twist);
+
+  geometry_msgs::Pose initial = odomPose;
+  
+  double init_yaw = tf::getYaw(initial.orientation);
+  
+
+  while(tf::getYaw(odomPose.orientation) - init_yaw < yaw) {
+    twist.angular.z = smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+    twist_pub->publish(twist);
+    ros::spinOnce();
+    i++;
+    loop_rate.sleep();
+  } while ( (ros::ok()) && (i < (rate*timout)) );
+
+  twist.angular.z = 0;
+  twist_pub->publish(twist);
 }
 
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
-    classification::ClassifiedObjectArray ca;
-    return ca;
+   this->speak("Object detected");
+  classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
+  double angle = atan2(lastSeen.p.y, lastSeen.p.x);
+  this->turn(angle);
+
+   const int rate = 10;
+   ros::Rate loop_rate(rate);
+   int time2wait = 2; // in seconds
+   int i = 0;
+
+   do {
+     ros::spinOnce();
+     i++;
+     loop_rate.sleep();
+   } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
+  
+ 
+   std::unordered_map<std::string,int> nbrObj;
+   std::unordered_map<std::string, int>::iterator it_nbr;
+   classification::ClassifiedObject current;
+   
+   //Now, let's check what the objectVion Array contains
+   for (int j=0; j < objectsVision->objects.size() ; j++) {
+     // if the class of the current object is not present yet
+     current = objectsVision->objects[j];
+     it_nbr = nbrObj.find(current.name);
+     
+     if ( it_nbr  == nbrObj.end() ) {
+       // We initialize the number of object of this class
+       nbrObj.insert(
+		     {{
+			 current.name, 
+			   1
+			   }}
+		     );
+     } else {
+       // else, we increment the counter
+       nbrObj[current.name] = nbrObj[current.name] + 1;
+     }
+   }
+   
+   int objectsThreshold = 1000;
+   
+   std::unordered_map<std::string, classification::ClassifiedObject> objectsTable;
+   std::unordered_map<std::string, classification::ClassifiedObject>::iterator it_obj;
+
+   for (int j=0; j < objectsVision->objects.size() ; j++) {
+     // if the class of the current object is not present yet
+     current = objectsVision->objects[j];
+     it_obj = objectsTable.find(current.name);
+     
+     // We test if the number of object of this type present is big enough
+     if ( nbrObj[current.name] > objectsThreshold) {
+       if ( it_obj  == objectsTable.end() ) {
+   	 objectsTable.insert(
+   			     {{
+   				 current.name, 
+   				   current
+   				   }}
+   			     );
+       } else {
+   	 //Average of the point
+   	 objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
+   	 objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
+   	 objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
+   	 //Average of the bounding box
+   	 objectsTable[current.name].bb.x0 = (1/2) * (objectsTable[current.name].bb.x0 + current.bb.x0);
+   	 objectsTable[current.name].bb.x1 = (1/2) * ( objectsTable[current.name].bb.x1 + current.bb.x1);
+   	 objectsTable[current.name].bb.y0 = (1/2) * (objectsTable[current.name].bb.y0 + current.bb.y0);
+   	 objectsTable[current.name].bb.y1 = (1/2) * (objectsTable[current.name].bb.y1 + current.bb.y1);
+	 // The other attributes of tege ClassifiedObject can be taken from any object of the array
+       }
+     }
+   }
+   
+   // We reset the Array
+   objectsVision->objects.clear();
+     
+   classification::ClassifiedObjectArray verifiedObjects;
+   
+   for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
+     verifiedObjects.objects.push_back(it_obj->second);
+   }
+   
+   return verifiedObjects;
 }
 
 void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
@@ -109,7 +276,8 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-    return false;
+  int threshold_vision = 25;
+  return (objectsVision->objects.size() > threshold_vision);
 }
 
 bool FunctionBlocks::sendObjects(classification::ClassifiedObjectArray& objects)
@@ -175,34 +343,77 @@ geometry_msgs::Pose FunctionBlocks::randUniform(void)
     return rs;
 }
 
-double FunctionBlocks::dist2goal(geometry_msgs::Pose&)
-{
-  return 0.3;
-}
+ double FunctionBlocks::dist2goal(geometry_msgs::Pose &p)
+ {
+   double distance = 0.0;
+
+   path_planning::GetPath srv;
+   srv.request.goal = p;
+   if (getPath_client->call(srv)){
+       for(int i = 1; (i < srv.response.path.poses.size()); i++)
+	 {
+	   distance += sqrt(
+			    pow((srv.response.path.poses[i-1].pose.position.y - srv.response.path.poses[i].pose.position.y), 2) +
+			    pow((srv.response.path.poses[i-1].pose.position.x - srv.response.path.poses[i].pose.position.x), 2)
+			    );
+	 }
+     return distance;
+   } else {
+     ROS_ERROR("Failed to call service GetPath for the distance");
+   }
+ }
     
-int FunctionBlocks::time2goal(geometry_msgs::Pose&)
+int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 {
-    return 10;
+  int time = 0;
+  double distance = 0.0;
+  double av_lin_vel = 0.125;
+  int time2turn = 1; 
+
+  path_planning::GetPath srv;
+  srv.request.goal = p;
+  if (getPath_client->call(srv)){
+      for(int i = 1; i < srv.response.path.poses.size(); i++)
+	{
+	  distance += sqrt(
+			   pow((srv.response.path.poses[i-1].pose.position.y - srv.response.path.poses[i].pose.position.y), 2) +
+			   pow((srv.response.path.poses[i-1].pose.position.x - srv.response.path.poses[i].pose.position.x), 2)
+			   );
+	}
+
+    time = (distance * av_lin_vel) + (srv.response.path.poses.size() * time2turn); 
+
+    return time;
+  } else {
+    ROS_ERROR("Failed to call service GetPath for the time");
+  }
 }
 
-bool FunctionBlocks::poseReached(geometry_msgs::Pose&, double radius, double yaw)
-{
-    return false;
-}
+ bool FunctionBlocks::poseReached(geometry_msgs::Pose &p, double radius, double yaw)
+ {
+   double odom_yaw = tf::getYaw(odomPose.orientation);
+   double goal_yaw = tf::getYaw(p.orientation);
 
-void FunctionBlocks::go2goal(geometry_msgs::Pose&)
-{
-    
-}
+   double distance = sqrt(
+			 pow(p.position.x - odomPose.position.x, 2) +
+			 pow(p.position.y - odomPose.position.y, 2)
+			 );
 
-void FunctionBlocks::turn(double yaw) 
+   //distance = dist2goal(p) if Astar faster
+   double angle = fabs(goal_yaw - odom_yaw);
+   return ( (distance < radius) && ( angle < yaw) );
+ }
+
+void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
-    
+  goalPose_pub->publish(p);
 }
 
 void FunctionBlocks::setWallFollower(bool on)
 {
-    
+  std_msgs::Bool wf;
+  wf.data = on;
+  wallfol_pub->publish(wf);
 }
 
 
@@ -252,7 +463,6 @@ geometry_msgs::Pose FunctionBlocks::fetchNext(void)
     return p;
 }
 
-
 void FunctionBlocks::speak(std::string text)
 {
   std_msgs::String msg; 
@@ -260,14 +470,22 @@ void FunctionBlocks::speak(std::string text)
   this->espeak_pub->publish(msg);
 }
 
-void FunctionBlocks::sendEvidence(classification::ClassifiedObjectArray &)
+void FunctionBlocks::sendEvidence(classification::ClassifiedObjectArray& objArray)
 {
-    
+  ras_msgs::RAS_Evidence evidence;
+  for (int i = 0; i < objArray.objects.size(); i++) {
+    evidence.stamp = ros::Time::now();
+    evidence.group_number = 7;
+    evidence.image_evidence = objArray.objects[i].image;
+    evidence.object_id = objArray.objects[i].name;
+    evidence.object_location.transform.translation.x = objArray.objects[i].p.x;
+    evidence.object_location.transform.translation.y = objArray.objects[i].p.y;
+  }
 }
 
 void FunctionBlocks::openDoor(void)
 {
-    this->speak("Starting.");
+    this->speak("Starting");
 }
 
 void FunctionBlocks::startTimer(const int seconds)
@@ -350,7 +568,7 @@ void FunctionBlocks::objects2localize(classification::ClassifiedObjectArray &)
     
 }
 
-int FunctionBlocks::objectMapped(classification::ClassifiedObject &)
-{
-    return -1; //Not mapped.
-}
+// int FunctionBlocks::objectMapped(classification::ClassifiedObject &)
+// {
+//     return -1;
+// }

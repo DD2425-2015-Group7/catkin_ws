@@ -58,27 +58,28 @@ class FunctionBlocks
         
         //Decisions.
         bool isPointFree(double x, double y);
-        geometry_msgs::Pose randUniform(void); //Ondrej
-        geometry_msgs::Pose exploreNext(void); //Ondrej
+        geometry_msgs::Pose randUniform(void);
+        geometry_msgs::Pose exploreNext(void);
         void testExploration(void);
-        geometry_msgs::Pose fetchNext(void); //Ondrej
+        geometry_msgs::Pose fetchNext(void);
         
         //User interface.
-        void speak(std::string text); //Aimen
-        void sendEvidence(classification::ClassifiedObjectArray &); //Aimen
+        void speak(std::string text);
+        void sendEvidence(classification::ClassifiedObjectArray &);
         void openDoor(void);
-        void startTimer(const int seconds); //Ondrej
+        void startTimer(const int seconds);
         int secondsLeft(void); //Ondrej
         bool testTimer(void);
         
         //Localization.
-        void initPose(geometry_msgs::Pose&); //Ondrej
-        void initUnknown(void); //Ondrej
+        void initPose(geometry_msgs::Pose&);
+        void initUnknown(void);
         void testMclInit(void);
-        bool isLocalized(void); //Ondrej
-        void objects2localize(classification::ClassifiedObjectArray &); //Ondrej
+        bool isLocalized(void);
+        void objects2localize(classification::ClassifiedObjectArray &);
         
 	void visionCB(const classification::ClassifiedObjectArray::ConstPtr &);
+	void odomCB(const nav_msgs::Odometry::ConstPtr &);
 
     private:
         time_t time0;
@@ -88,22 +89,34 @@ class FunctionBlocks
         int minOccupied;
         
         nav_msgs::OccupancyGrid *mapInflated;
-        ros::ServiceClient *map_client, *add_objects_client;
+        ros::ServiceClient *map_client, *add_objects_client, *getPath_client;
         ros::Publisher *init_mcl_pub;
 	ros::Publisher *espeak_pub;
 	ros::Subscriber *vision_sub;
+	ros::Subscriber *odom_sub;
+	ros::Publisher *wallfol_pub;
+	ros::Publisher *evidence_pub;
+	ros::Publisher *twist_pub;
+	ros::Publisher *goalPose_pub;
 
         classification::ClassifiedObjectArray *objectsVision, *objectsMap;
         
         bool updateMap(void);
         int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y);
-        int objectMapped(classification::ClassifiedObject &); //return index Aimen
+	//int objectMapped(classification::ClassifiedObject &);
         
 	std::string MapFrameName, RobotFrameName;
 	
 	tf::TransformListener *tf_listener;
 
 	int countObjDetected; 
+
+	bool odomReady;
+
+	double smoothUpdateVelocity(double current, double required, double step);
+
+	geometry_msgs::Pose odomPose;
+
 };
 
 #endif
