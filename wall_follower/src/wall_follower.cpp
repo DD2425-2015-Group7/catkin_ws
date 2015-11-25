@@ -6,6 +6,7 @@
 #include <cmath>
 #include <stdlib.h>
 #include <time.h>
+#include "std_msgs/Bool.h"
 
 double alpha = 25;
 // The minimum distance allowed between the front sensors and a wall
@@ -29,6 +30,9 @@ float a_speed = 1.5;
 bool side = 0;
 
 bool flagReady = 0;
+
+bool flagReadyWF = 0;
+bool wfON = false;
 
 enum States{
     EMPTY = 0,
@@ -61,6 +65,12 @@ void distanceCallback(const ir_sensors::RangeArray::ConstPtr &msg)
     flagReady = 1;
 }
 
+void wallFollowerCallback(const std_msgs::Bool::ConstPtr &msg)
+{
+  wfON = msg->data;
+  flagReadyWF = 1;
+}
+
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "wall_following_controller");
@@ -70,6 +80,8 @@ int main(int argc, char **argv)
     ros::Publisher twist_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel", 1000);
 
     ros::Subscriber dist_sub = n.subscribe("/ir_publish/sensors", 1000, distanceCallback);
+
+    ros::Subscriber wallfol_sub = n.subscribe("/wallFollower", 1000, wallFollowerCallback);
 
     ros::Rate loop_rate(25);
 
@@ -82,7 +94,7 @@ int main(int argc, char **argv)
     // Booleans that indicate if the sensors on each side detect something close
     int side=1;
 
-    while (ros::ok()){
+    while (ros::ok() && wfON){
 
         bool front = (distance_front_left < front_limit) || (distance_front_right < front_limit);
         bool right = (distance_rights_front < side_limit) && (distance_rights_back < side_limit);

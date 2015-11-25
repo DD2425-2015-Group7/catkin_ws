@@ -7,14 +7,18 @@
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
 #include "nav_msgs/OccupancyGrid.h"
+#include "nav_msgs/Odometry.h"
 #include "tf/transform_listener.h"
 #include "tf/transform_broadcaster.h"
+#include "tf/transform_datatypes.h"
 #include "tf/tf.h"
 #include "math.h"
 
 #include "map_tools/AddEllipse.h"
 #include "map_tools/AddObjects.h"
 #include "map_tools/GetMap.h"
+
+#include "path_planning/GetPath.h" 
 
 #include "classification/ClassifiedObject.h"
 #include "classification/ClassifiedObjectArray.h"
@@ -25,6 +29,11 @@
 #include <random>
 
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
+
+#include <unordered_map>
+
+#include "ras_msgs/RAS_Evidence.h"
 
 class FunctionBlocks
 {
@@ -32,20 +41,20 @@ class FunctionBlocks
         FunctionBlocks(ros::NodeHandle& n);
     
         //Vision and mapping.
-        classification::ClassifiedObjectArray processObject(void); //Blocking function. Aimen
-        void add2map(classification::ClassifiedObjectArray &);  //Includes cam_link -> map tf. Ondrej
+        classification::ClassifiedObjectArray processObject(void);
+        void add2map(classification::ClassifiedObjectArray &);  //Includes cam_link -> map tf.
         bool sendObjects(classification::ClassifiedObjectArray& objects);
-        void setViewPose(classification::ClassifiedObject& obj); //TODO
+        void setViewPose(classification::ClassifiedObject& obj);
         void testAdd2Map(void);
-        bool objectDetected(void); //Aimen
+        bool objectDetected(void);
         
         //Motion.
-        double dist2goal(geometry_msgs::Pose&); //Aimen
-        int time2goal(geometry_msgs::Pose&); //Aimen
-        bool poseReached(geometry_msgs::Pose&, double radius, double yaw); //Aimen
-        void go2goal(geometry_msgs::Pose&); //Aimen
-        void turn(double yaw); //Blocking function. Aimen
-        void setWallFollower(bool on); //Aimen
+        double dist2goal(geometry_msgs::Pose&);
+        int time2goal(geometry_msgs::Pose&); 
+        bool poseReached(geometry_msgs::Pose&, double radius, double yaw);
+        void go2goal(geometry_msgs::Pose&);
+        void turn(double yaw);
+        void setWallFollower(bool on);
         
         //Decisions.
         bool isPointFree(double x, double y);
