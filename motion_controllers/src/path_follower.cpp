@@ -124,12 +124,12 @@ int main(int argc, char *argv[])
     ros::NodeHandle handle;
     ros::Subscriber sub_posi = handle.subscribe("/path_pose", 1000, setPosition);
 
-    ros::Subscriber sub_IRdist = handle.subscribe("/ir_publish/sensors", 1000, distanceCallback);
-    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
+    //ros::Subscriber sub_IRdist = handle.subscribe("/ir_publish/sensors", 1000, distanceCallback);
+    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
 
     // These two lines are for kobuki simulationd
-    //ros::Subscriber sub_IRdist = handle.subscribe("/kobuki/adc", 1000, kobukiDistanceCallback);
-    //ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
+    ros::Subscriber sub_IRdist = handle.subscribe("/kobuki/adc", 1000, kobukiDistanceCallback);
+    ros::Publisher pub_twist = handle.advertise<geometry_msgs::Twist>("/mobile_base/commands/velocity",1000);
     geometry_msgs::Twist t;
     ros::Rate loopRate(10);
 

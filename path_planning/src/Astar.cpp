@@ -81,10 +81,6 @@ void setGoalPosition(const geometry_msgs::Pose::ConstPtr& msg)
 
 void setMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
-//    int[] oneDiemensionalArrayMap = msg.get()->data;
-//    int sizeOfRows = msg.get()->info.height;
-//    int sizeOfCols = msg.get()->info.width;
-
       //std::cout<< "Setting the map" <<std::endl;
       map->data = msg.get()->data;
       map->info = msg.get()->info;
@@ -153,6 +149,39 @@ class PathFinder
     //if this point is passable, then return TRUE, if it is occupied, return false
     bool isCanMove(int row,int col)
     {
+        if(row < 0)
+        {
+            return false;
+        }
+        if(row >= map->info.height)
+        {
+            return false;
+        }
+        if(col < 0)
+        {
+            //ROS_INFO("col < 0");
+            return false;
+        }
+        if(col >= map->info.width)
+        {
+            return false;
+        }
+        if(map->data[row*map->info.width + col] <= 15)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+
+
+        /*
+        assert(row >= 0);
+        assert(col >= 0);
+        assert(col < map->info.width);
+        assert(row < map->info.height);
+
         if(map->data[row*map->info.width + col] > 15)
         {
             //System.err.println("Not available");
@@ -163,21 +192,24 @@ class PathFinder
             //System.err.println("Available");
             return false;
         }
+        */
     }
 
     vector<Node> getNeighbours(Node current)
     {
         int row = current.row;
         int col = current.col;
+
         vector<Node> neighbours;
         //Up
         if(isCanMove(row+1,col))
         {
+            //std::cout<<"Up"<<std::endl;
             Node newNode;
             newNode.row = row+1;
             newNode.col = col;
             newNode.g = 999999999;//std::numeric_limits<int>::max();
-            //System.out.println("Up");
+            //std::cout<<"Up"<<std::endl;
             neighbours.push_back(newNode);
         }
         //Down
@@ -228,7 +260,6 @@ class PathFinder
     }
 
     //if the position of start or goal is invalid, then we return TRUE
-    // ROW -> Height? COL -> Width?
     bool inValid(Node start, Node goal)
     {
         //std::cout << "Start Row & Col is : "<< start.row <<" & "<<start.col<<std::endl;
@@ -275,20 +306,22 @@ class PathFinder
             Node current = getBestChild(openSet);
             //std::cout << "Current Point is: ( "<< current.row << " , "<<current.col <<" )" <<std::endl;
             //std::cout << "Goal Point is: ( "<< goal.row << " , "<<goal.col <<" )" <<std::endl;
+
             if(current.row == goal.row && current.col == goal.col)
             {
                 ROS_INFO("Astar Destinaltion reached");
                 return reconstruct(current);
             }
+
             //The following two lines are used to delete one certain element
             int position = getPosition(openSet,current);
             openSet.erase(openSet.begin() + position);
 
             closeSet.push_back(current);
+
             //std::cout << "CloseSet size is "<< closeSet.size()<<std::endl;
 
             vector<Node> neighbours = getNeighbours(current);
-
             for(int i = 0; i < neighbours.size(); i++)
             {
                 //std::cout << "Neighbours size is "<< neighbours.size()   <<std::endl;
@@ -304,29 +337,26 @@ class PathFinder
                 }
 
 
-                int newG = current.g + G_OFFSET_4;  //distance(current,child);
+                int newG = current.g + G_OFFSET_4;
 
-                if (!itHas(openSet,child) || newG < child.g)
+                if (!itHas(openSet,child))
                 {
-                    //ROS_INFO("find the child");
-                    //child.parent = &current;
-                    child.g = newG;
-                    child.f = child.g + hValue(child) + oValue(child);
-                    come_from[child.row][child.col] = current;
-
-                    if (!itHas(openSet,child))
-                    {
-                        openSet.push_back(child);
-                    }
-
+                    openSet.push_back(child);
+                }
+                else if(newG >= child.g)
+                {
+                    continue;
                 }
 
-            }
+                come_from[child.row][child.col] = current;
+                child.g = newG;
+                child.f = child.g + hValue(child) + oValue(child);
+               }
 
-        }
+            }
         nav_msgs::Path nu;
         return nu;
-    }
+        }
 
     nav_msgs::Path reconstruct(Node current)
     {
@@ -370,15 +400,15 @@ class PathFinder
         finalPath.poses.push_back(p);
 
         finalPath.header.stamp = ros::Time::now();
-        //Frame_ID maybe wrong, as I could not show this in our case
         finalPath.header.frame_id = "/map";
-
-        //Show the Original path
         std::cout<<"Original Path Size is: "<< finalPath.poses.size()<<std::endl;
+        //Show the Original path
+        /*
         for(int i = 0; i < finalPath.poses.size(); i++)
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
         }
+        */
 
         return finalPath;
     }
@@ -388,19 +418,16 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
 {
     nav_msgs::Path newPath;
 
-    int pathSize = path.poses.size();
-
     //This loop is used to store the "corner" point(either x or y value changes)
     //checkY means we will check the y difference for the two points
     bool checkY = true;
-    for(int i = 0; i < pathSize - 1; i++)
+    for(int i = 0; i < path.poses.size() - 1; i++)
     {
        int j = i + 1;
        if(checkY)
        {
            if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
            {
-
                //ROS_INFO("X value changes");
                geometry_msgs::PoseStamped p;
                p.pose.position.x = path.poses.at(i).pose.position.x;
@@ -497,22 +524,13 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
         finalPath.poses.pop_back(); // Delete the last point
         finalPath.poses.push_back(newPath.poses.back()); // Add the last point of the newPath
     }
+
+
     std::cout<< "FinalPath size is : "<< finalPath.poses.size() << std::endl;
-    /*
-    //Used to calculate the distance
-    for(int i = 1; i < path.poses.size(); i++)
-    {
-        pathDistance += sqrt(finalPath.poses.at(i-1).pose.position.y - finalPath.poses.at(i).pose.position.y)*(finalPath.poses.at(i-1).pose.position.y - finalPath.poses.at(i).pose.position.y) +
-                (finalPath.poses.at(i-1).pose.position.x - finalPath.poses.at(i).pose.position.x)*(finalPath.poses.at(i-1).pose.position.x - finalPath.poses.at(i).pose.position.x);
-    }
-
-    // Return the distance in meters  :: TODO - meters or ?
-    pathDistance = pathDistance/100;
-    ROS_INFO("Here");
-    std::cout<<"Path distance(in meters) is : " << pathDistance << std::endl;
-    */
-
-
+//    for(int i = 0; i < finalPath.poses.size(); i++)
+//    {
+//        std::cout<< "Final Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
+//    }
     //This is for the final Path
     finalPath.header.stamp = ros::Time::now();
     finalPath.header.frame_id = "/map";
@@ -563,8 +581,8 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
       return nu;
       ros::Duration(1.0).sleep();
     }
-    start.row = startPose.pose.position.y * 100;
-    start.col = startPose.pose.position.x * 100;
+    start.row = startPose.pose.position.y / cell_size;
+    start.col = startPose.pose.position.x / cell_size;
 
     Node goal;
     goal.row = goalRow;
@@ -597,7 +615,7 @@ int main(int argc, char **argv)
     map->info.width = 0;
     //ros::Subscriber path_sub_map = handle.subscribe<nav_msgs::OccupancyGrid>("/map",5,setMap);
 
-    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path", 10);
+    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
 
 
     //Wait 8 s for the map service.
@@ -620,7 +638,7 @@ int main(int argc, char **argv)
 //    goal.col = goalY;
 
     //row stands for the y-coordinate; col stands for the x value;
-
+    /*
     //TF package to set the start point
     std::string TargetFrameName = "/map";
     std::string CurrentFrame = "/base_link";
@@ -649,19 +667,19 @@ int main(int argc, char **argv)
     }
     start.row = startPose.pose.position.y * 100;
     start.col = startPose.pose.position.x * 100;
-
-    //start.row = 211;//92;//20;
-    //start.col = 195;//200;//38;//193;//20;
-
+    */
+    start.row = 20;//25;//92;//20;
+    start.col = 20;//195;//200;//38;//193;//20;
+    // row & col : start -> 211,195  || goal : 73,186
     //row:90, col:36 is the one we couldn't find the path
-    goal.row = 73;//90;//216;//211;//90;//73;//25;//20;//40;
-    goal.col = 186;//36;//104;//200;//36;//186;//200;//220;//20;
+    goal.row = 25;//216;//216;//211;//90;//73;//25;//20;//40;
+    goal.col = 50;//186;//104;//200;//36;//186;//200;//220;//20;
     PathFinder pf(start,goal);
 
     ros::Rate loop_rate(1);
 
     nav_msgs::Path path;
-     nav_msgs::Path simpilifiedPath;
+    nav_msgs::Path simpilifiedPath;
 	while (ros::ok())
 	{
         updateMap();
@@ -674,12 +692,13 @@ int main(int argc, char **argv)
         {
           ROS_INFO("Planning a path...");
           path = pf.getPath();
+          //std::cout<<"path size : "<<path.poses.size()<<std::endl;
           if(path.poses.size() > 0)
           {
              simpilifiedPath = simpilifyPath(path);
           }
-          path_pub.publish(simpilifiedPath);
-          //path_pub.publish(path);
+          //path_pub.publish(simpilifiedPath);
+          path_pub.publish(path);
         }
         ros::spinOnce();
 		loop_rate.sleep();
