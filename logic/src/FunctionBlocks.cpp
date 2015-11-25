@@ -424,6 +424,8 @@ void FunctionBlocks::setWallFollower(bool on)
 {
   std_msgs::Bool wf;
   wf.data = on;
+  ros::Rate loop_rate(5);
+  loop_rate.sleep();
   wallfol_pub->publish(wf);
 }
 

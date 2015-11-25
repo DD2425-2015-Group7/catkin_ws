@@ -83,6 +83,31 @@ void explore(void)
   getOut();
 }
 
+void exploreWall(void)
+{
+  const int rate = 5;
+  classification::ClassifiedObjectArray objectArray;
+  ros::Rate loop_rate(rate);
+    
+  fb->initPose(*startPose);
+  fb->setWallFollower(true);
+  fb->openDoor();
+  fb->startTimer(explorationTimeout);
+  do{
+    fb->setWallFollower(true);
+    if(fb->objectDetected()){
+        fb->setWallFollower(false);
+        objectArray = fb->processObject();
+        fb->add2map(objectArray);
+        fb->sendEvidence(objectArray);
+        fb->setWallFollower(true);
+    }
+    ros::spinOnce();
+    loop_rate.sleep();
+  } while( (ros::ok()) && (safetyTime < fb->secondsLeft()) );
+  fb->setWallFollower(false);
+}
+
 void fetchAndReport(classification::ClassifiedObjectArray& objectArray)
 {
     const int rate = 5;
@@ -146,7 +171,7 @@ int main(int argc, char **argv)
   fb = new FunctionBlocks(n);
 
   std::string behaviour;
-  n.param<std::string>("logic_behaviour", behaviour, "test");
+  n.param<std::string>("logic_behaviour", behaviour, "explore_wall");
   if(behaviour.compare("explore") == 0){
     explore();
   }else if(behaviour.compare("fetch") == 0){
@@ -159,6 +184,8 @@ int main(int argc, char **argv)
     // fb->testAdd2Map();
     // fb->testTimer();
     ROS_INFO("It works!");
+    }else if(behaviour.compare("explore_wall") == 0){
+        exploreWall();
   }else{
     ROS_ERROR("Logic: Non-existent behaviour selected.");
   }

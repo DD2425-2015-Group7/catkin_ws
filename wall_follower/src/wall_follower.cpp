@@ -30,7 +30,7 @@ float a_speed = 1.5;
 bool side = 0;
 
 bool flagReady = 0;
-
+bool wfStateChanged = true;
 bool flagReadyWF = 0;
 bool wfON = false;
 
@@ -69,6 +69,8 @@ void wallFollowerCallback(const std_msgs::Bool::ConstPtr &msg)
 {
   wfON = msg->data;
   flagReadyWF = 1;
+  if(!wfON)
+    wfStateChanged = true;
 }
 
 int main(int argc, char **argv)
@@ -93,8 +95,22 @@ int main(int argc, char **argv)
     int counter = 0;
     // Booleans that indicate if the sensors on each side detect something close
     int side=1;
+    
 
-    while (ros::ok() && wfON){
+    while (ros::ok()){
+        
+        if(wfStateChanged){
+            wfStateChanged = false;
+            msg.linear.x = 0;
+            msg.angular.z = 0;
+            twist_pub.publish(msg);
+        }
+        
+        if(!wfON){
+            ros::spinOnce();
+            loop_rate.sleep();
+            continue;
+        }
 
         bool front = (distance_front_left < front_limit) || (distance_front_right < front_limit);
         bool right = (distance_rights_front < side_limit) && (distance_rights_back < side_limit);
