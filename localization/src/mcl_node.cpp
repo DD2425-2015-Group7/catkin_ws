@@ -25,7 +25,7 @@ std::string odomFrame, baseFrame, mapFrame;
 double irSigma;
 double initConeRadius, initYawVar;
 int minOccupied;
-bool mclEnabled = false;
+bool mclEnabled;
 
 std::mutex mtx;
 struct Poses{
@@ -103,11 +103,11 @@ bool updateMap(void)
         return false;
     }
     map_tools::GetMap srv2;
-    srv2.request.type.data = "inflated";
+    srv2.request.type.data = "inflated_obj";
     if (map_client->call(srv2)){
         *mapInflated = srv2.response.map;
     }else{
-        ROS_ERROR("Failed to call service GetMap (inflated).");
+        ROS_ERROR("Failed to call service GetMap (inflated_obj).");
         return false;
     }
     return true;
@@ -136,6 +136,8 @@ void initMcl(const geometry_msgs::Pose::ConstPtr& p)
 
 void runMonteCarlo(void)
 {
+    struct PoseState var, avg;
+    double dx, dy, dth;
     mtx.lock();
     irm->updateMeasurements(irReadings);
     mtx.unlock();
@@ -143,9 +145,17 @@ void runMonteCarlo(void)
     assert(csz > 0.00001);
     mc->run(odomState, ((double)mapInflated->info.width)*csz,
                         ((double)mapInflated->info.height)*csz);
-    coords.x = coords.x0;
-    coords.y = coords.y0;
-    coords.th = 0.0;
+    
+    var = mc->getStd();
+    avg = mc->getState();
+    if(var.x < 0.4 && var.y < 0.4){
+        dx = avg.x - odomState.x;
+        dy = avg.y - odomState.y;
+        dth = avg.yaw - odomState.yaw;
+        coords.x = avg.x;
+        coords.y = avg.y;
+        coords.th = avg.yaw;
+    }
 }
 
 int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y)
@@ -180,6 +190,25 @@ bool isPointFree(double x, double y)
 
 void publishTransform(void)
 {
+    tf::Stamped<tf::Pose> odom2map;
+    try{
+        tf::Transform tmp(tf::createQuaternionFromYaw(coords.th),
+                             tf::Vector3(coords.x, coords.y, 0.0));
+        tf::Stamped<tf::Pose> tmpStamped (tmp.inverse(), current_time, baseFrame);
+        tf_listener->transformPose(odomFrame, tmpStamped, odom2map);
+    }
+    catch(tf::TransformException)
+    {
+        ROS_DEBUG("Map -> Odom transform failed.");
+        return;
+    }
+
+    tf::Transform tfom = tf::Transform(tf::Quaternion(odom2map.getRotation()),
+                                 tf::Point(odom2map.getOrigin()));
+    tf::StampedTransform map_trans_stamped(tfom.inverse(), current_time, mapFrame, odomFrame);
+    tf_broadcaster->sendTransform(map_trans_stamped);
+    
+    /*
      //first, we'll publish the transform over tf
     geometry_msgs::TransformStamped map_trans;
     mtx.lock();
@@ -187,7 +216,8 @@ void publishTransform(void)
     mtx.unlock();
     map_trans.header.frame_id = mapFrame;
     map_trans.child_frame_id = odomFrame;
-
+    
+    
     map_trans.transform.translation.x = coords.x;
     map_trans.transform.translation.y = coords.y;
     map_trans.transform.translation.z = 0.0;
@@ -196,6 +226,7 @@ void publishTransform(void)
 
     //send the transform
     tf_broadcaster->sendTransform(map_trans);
+    */
 }
 
 void particles2PoseArray(const std::vector<MonteCarlo::StateW> &particles, geometry_msgs::PoseArray &pa)
@@ -302,6 +333,7 @@ int main(int argc, char **argv)
     
 
     current_time = ros::Time::now();
+    
 
     ros::Rate loop_rate(rate);
     
@@ -309,7 +341,7 @@ int main(int argc, char **argv)
 	{
         if(!updateMap()){
             return -1;
-        }
+        } 
         if(mclEnabled){
             runMonteCarlo();
             particles2PoseArray(mc->getParticles(), poseArray);
