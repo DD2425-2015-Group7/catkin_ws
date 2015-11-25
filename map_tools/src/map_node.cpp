@@ -11,6 +11,9 @@
 #include "map_tools/GetMap.h"
 #include "classification/ClassifiedObjectArray.h"
 
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+
 std::string mapFrame, wallFile;
 double wallThickness, inflationRadius, cellSize;
 
@@ -20,6 +23,7 @@ classification::ClassifiedObjectArray *clsObj;
 ros::Time current_time;
 tf::TransformBroadcaster *tf_broadcaster;
 tf::TransformListener *tf_listener;
+ros::Publisher *vis_pub;
 
 bool addEllipse(map_tools::AddEllipse::Request  &req,
          map_tools::AddEllipse::Response &res)
@@ -89,6 +93,33 @@ bool addObjects(map_tools::AddObjects::Request  &req,
     return true;
 }
 
+void publishObjects(void)
+{
+    visualization_msgs::MarkerArray all_markers;
+    visualization_msgs::Marker obj_marker;
+    obj_marker.header.frame_id = mapFrame;
+    obj_marker.header.stamp = ros::Time();
+    obj_marker.ns = "objects";
+    obj_marker.type = visualization_msgs::Marker::CUBE;
+    obj_marker.action = visualization_msgs::Marker::ADD;
+    obj_marker.scale.x = 0.05;
+    obj_marker.scale.y = 0.05;
+    obj_marker.scale.z = 0.05;
+    obj_marker.color.a = 1.0;
+    obj_marker.color.r = (255.0/255.0);
+    obj_marker.color.g = (0.0/255.0);
+    obj_marker.color.b = (0.0/255.0);
+    obj_marker.pose.position.z = 0.05;
+    
+    for(int i = 0; i < clsObj->objects.size(); i++){
+        obj_marker.pose.position.x = clsObj->objects[i].p.x;
+        obj_marker.pose.position.y = clsObj->objects[i].p.y;
+        obj_marker.id = i;
+        all_markers.markers.push_back(obj_marker);
+    }
+    vis_pub->publish(all_markers);
+}
+
 bool getMap(map_tools::GetMap::Request  &req,
          map_tools::GetMap::Response &res)
 {
@@ -150,6 +181,8 @@ int main(int argc, char **argv)
     map.header.frame_id = mapFrame;
     map.header.stamp = current_time;
     ros::Publisher map_pub_obj = n.advertise<nav_msgs::OccupancyGrid>("/map", 2, true);
+    vis_pub = new ros::Publisher();
+    *vis_pub = n.advertise<visualization_msgs::MarkerArray>("/map_node/objects", 1 );
     clsObj = new classification::ClassifiedObjectArray();
     ms = new MapStorage(cellSize, 100, 10, inflationRadius);
     mso = new MapStorage(cellSize, 100, 10, inflationRadius);
@@ -185,6 +218,7 @@ int main(int argc, char **argv)
             map_pub_obj.publish(map);
             counter = 0;
         }
+        publishObjects();
 		ros::spinOnce(); // Run the callbacks.
 		loop_rate.sleep();
 	}
