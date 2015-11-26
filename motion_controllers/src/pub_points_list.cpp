@@ -27,7 +27,7 @@ std_msgs::String str;
 
 void setPath(const nav_msgs::Path::ConstPtr& msg)
 {
-    //ROS_INFO("set path");
+    ROS_INFO("set path");
     path.header = msg->header;
     path.poses = msg->poses;
 }
@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "pub_points_list");
     ros::NodeHandle handle;
 
-    //ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("path_planner/path",1000,setPath);
-    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/Astar/path",1000,setPath);
+    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("path_planner/path",1000,setPath);
+    //ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/Astar/path",1000,setPath);
 
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("/odom",1000,calculatePosition);
     ros::Publisher pub_pose_obj = handle.advertise<geometry_msgs::Pose>("/path_pose", 1000);
@@ -132,4 +132,3 @@ int main(int argc, char *argv[])
 
    return 0;
 }
-
