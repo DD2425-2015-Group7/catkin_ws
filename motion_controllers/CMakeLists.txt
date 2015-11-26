@@ -205,6 +205,13 @@ add_dependencies(DifferentialDrive ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_
 target_link_libraries(DifferentialDrive
    ${catkin_LIBRARIES}
 )
+
+
+add_executable(go2pose src/go2pose.cpp)
+add_dependencies(go2pose ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(go2pose
+   ${catkin_LIBRARIES}
+)
  
 #############
 ## Install ##

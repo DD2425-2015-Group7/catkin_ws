@@ -77,7 +77,10 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
 
       double x = goalPose.pose.position.x;
       double y = goalPose.pose.position.y;
-
+        //If not the last path pose, do not perform final rotation.
+        if(nextPoint < path.poses.size() - 1){
+            goalPose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
+        }
    double distance = sqrt(x*x + y*y);
    if(distance < closeEnough)
    {
