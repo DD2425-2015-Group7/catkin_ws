@@ -96,7 +96,7 @@ void exploreWall(void)
   do{
     fb->setWallFollower(true);
     if(fb->objectDetected()){
-      ROS_INFO("OBBBBBBBBBBBBBBBBBBBBBBBBBBBBJJJJ DETECCTEDDDDDDDDDDDDDDDDd");
+      ROS_INFO("Object detected behaviour");
       fb->setWallFollower(false);
       objectArray = fb->processObject();
       fb->add2map(objectArray);

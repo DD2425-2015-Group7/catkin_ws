@@ -70,6 +70,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 }
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
+  ROS_INFO("Jesper");
   static int count = 0;
 
   if (count > 12) {
@@ -106,6 +107,7 @@ double FunctionBlocks::smoothUpdateVelocity(double current, double required, dou
 
 void FunctionBlocks::turn(double yaw) 
 {
+  ROS_INFO("Turn");
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int timout = 2;
@@ -122,29 +124,32 @@ void FunctionBlocks::turn(double yaw)
   
   double init_yaw = tf::getYaw(initial.orientation);
 
-  while(tf::getYaw(odomPose.orientation) - init_yaw < yaw) {
+  ROS_INFO("Difference %f\n", tf::getYaw(odomPose.orientation) - init_yaw);   
+
+  do {
     ROS_INFO("Turning %f\n", tf::getYaw(odomPose.orientation) - init_yaw);
-    twist.angular.z = 10*fabs(tf::getYaw(odomPose.orientation) - init_yaw)*a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+    twist.angular.z = /*(tf::getYaw(odomPose.orientation) - init_yaw)**/a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
     twist_pub->publish(twist);
     ros::spinOnce();
     i++;
     loop_rate.sleep();
-  } while ( (ros::ok()) && (i < (rate*timout)) );
+    } while ( (ros::ok()) && (i < (rate*timout)) 
+	      && (tf::getYaw(odomPose.orientation) - init_yaw < yaw) );
 
+  ROS_INFO("End turn");
   twist.angular.z = 0;
   twist_pub->publish(twist);
 }
 
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
-  ROS_INFO("PRRRRRRRRRRRRRRRRRRRRRRRRRRRROCEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEESS");
+  ROS_INFO("Processing start");
   //this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
-  ROS_INFO("ZZZZZZZZZZZZZZZZZZZZZZZZZ");
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   this->turn(angle);
   
-  ROS_INFO("Turno PROCESS OK");
+  ROS_INFO("Turn process OK");
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int time2wait = 2; // in seconds
@@ -156,6 +161,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
     loop_rate.sleep();
   } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
   
+  ROS_INFO("Attente fini");
   
   std::unordered_map<std::string,int> nbrObj;
   std::unordered_map<std::string, int>::iterator it_nbr;
@@ -211,6 +217,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 	objectsTable[current.name].bb.y0 = (1/2) * (objectsTable[current.name].bb.y0 + current.bb.y0);
 	objectsTable[current.name].bb.y1 = (1/2) * (objectsTable[current.name].bb.y1 + current.bb.y1);
 	// The other attributes of tege ClassifiedObject can be taken from any object of the array
+
       }
     }
   }
@@ -236,32 +243,33 @@ void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
 
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 {
-    geometry_msgs::PointStamped p0, p1;
-    p0.header.frame_id = objects.header.frame_id;
-    p0.header.stamp = objects.header.stamp;
-    
+  ROS_INFO("Add2Map");
+  geometry_msgs::PointStamped p0, p1;
+  p0.header.frame_id = objects.header.frame_id;
+  p0.header.stamp = objects.header.stamp;
+  
+  try{
+    tf_listener->waitForTransform(MapFrameName, p0.header.frame_id, p0.header.stamp, ros::Duration(1.0) );
+  }catch(tf::TransformException &ex){
+    ROS_ERROR("%s",ex.what());
+    return;
+  }
+  
+  objects.header.frame_id = MapFrameName;
+  for(int i = 0; i < objects.objects.size(); i++){
+    p0.point = objects.objects[i].p;
     try{
-      tf_listener->waitForTransform(MapFrameName, p0.header.frame_id, p0.header.stamp, ros::Duration(1.0) );
+      tf_listener->transformPoint(MapFrameName, p0, p1);
     }catch(tf::TransformException &ex){
-        ROS_ERROR("%s",ex.what());
-        return;
+      ROS_ERROR("%s",ex.what());
+      return;
     }
+    objects.objects[i].p = p1.point;
+    setViewPose(objects.objects[i]);
+  }
     
-    objects.header.frame_id = MapFrameName;
-    for(int i = 0; i < objects.objects.size(); i++){
-        p0.point = objects.objects[i].p;
-        try{
-          tf_listener->transformPoint(MapFrameName, p0, p1);
-        }catch(tf::TransformException &ex){
-            ROS_ERROR("%s",ex.what());
-            return;
-        }
-        objects.objects[i].p = p1.point;
-        setViewPose(objects.objects[i]);
-    }
-    
-    this->sendObjects(objects);
-    this->updateMap();
+  this->sendObjects(objects);
+  this->updateMap();
 }
 
 void FunctionBlocks::testAdd2Map(void)
@@ -285,13 +293,14 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 2;
+  int threshold_vision = 1;
 
-  ROS_INFO("detection");
   if (objDetectTimeout > 24) {
+    ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
     return (objectsVision->objects.size() > threshold_vision);
   } else {
     objDetectTimeout++; 
+    ROS_INFO("Detection TROP TOT");
     return false;
   }
 

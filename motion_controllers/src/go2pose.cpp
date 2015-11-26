@@ -83,7 +83,7 @@ void turning(double a)
 {
     twist->linear.x = 0.0;
     twist->angular.z = -p_angle_spot * a;
-    twist->angular.z = boundaries(twist->angular.z, 0.0, maxOnSpot);
+    twist->angular.z = boundaries(twist->angular.z, minOnSpot, maxOnSpot);
 }
 
 
@@ -99,32 +99,57 @@ int main(int argc, char *argv[])
     
     n.param<double>("p_angle_lin", p_angle_lin, 0.5);
     n.param<double>("p_angle_spot", p_angle_spot, 1.5);
-    n.param<double>("yaw_tolerance", tolYaw, 0.2);
+    n.param<double>("yaw_tolerance", tolYaw, 0.3);
     n.param<double>("distance_tolerance", tolDist, 0.03);
     n.param<double>("max_lin_speed", maxLinSpeed, 0.2);
-    n.param<double>("max_on_spot_angular speed", maxOnSpot, 2.0);
-    n.param<double>("min_on_spot_angular speed", minOnSpot, 1.0);
+    n.param<double>("max_on_spot_angular_speed", maxOnSpot, 2.0);
+    n.param<double>("min_on_spot_angular_speed", minOnSpot, 1.0);
     n.param<double>("max_lin_acc", maxLinAcc, 0.4);
     
     double rate = 10;
     int count = 0;
     double dt = 1.0/rate;
+    bool isForward = false, isStopped = false;
+    enum State{t1, fw, t2, stop};
+    enum State s;
+    s = t1;
     yawFin = distance = angle = 0.0;
     
     ros::Rate loopRate(rate);
 
     while(ros::ok())
     {
-        if(fabs(angle) > tolYaw){
+        if(fabs(angle) > 2*tolYaw)
+            s = t1;
+        if(s == t1){
+            isForward = false;
             turning(angle);
-        }else if(distance > tolDist){
+            ROS_INFO("turn 1");
+            if(fabs(angle) < tolYaw)
+                s = fw;
+        }else if(s == fw){
+            if(!isForward){
+                isForward = true;
+                isStopped = true;
+            }
+            ROS_INFO("forward");
             goForward(dt);
-        }else if(fabs(yawFin) > tolYaw){
+            if(distance < tolDist)
+                s = t2;
+        }else if(s == t2){
+            isForward = false;
             turning(yawFin);
-        }else{
+            ROS_INFO("turn 2");
+            if(fabs(angle) < tolYaw)
+                s = stop;
+        }else if(s == stop){
+            isForward = false;
+            ROS_INFO("stop");
             twist->linear.x = 0.0;
             twist->angular.z = 0.0;
+            s = t1;
         }
+        
         if(poseReceived){
             count = 0;
             poseReceived = false;
@@ -133,6 +158,13 @@ int main(int argc, char *argv[])
             twist->angular.z = 0.0;
         }else{
             count++;
+        }
+        
+        if(isStopped){
+            ROS_INFO("isStopped");
+            twist->linear.x = 0.0;
+            twist->angular.z = 0.0;
+            isStopped = false;
         }
         
         pub_twist.publish(*twist);
