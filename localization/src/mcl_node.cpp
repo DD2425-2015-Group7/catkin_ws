@@ -331,6 +331,13 @@ int main(int argc, char **argv)
     
     ros::Subscriber init_mcl_sub = n.subscribe<geometry_msgs::Pose>("/mcl/initial_pose", 2, initMcl);
     
+    double csz = mapInflated->info.resolution;
+    double wc = ((double)mapInflated->info.width);
+    double hc = ((double)mapInflated->info.height);
+    assert(csz > 0.00001);
+    mc->init(pose, initConeRadius, initYawVar, wc*csz, hc*csz);
+    mclEnabled = true;
+    
 
     current_time = ros::Time::now();
     
