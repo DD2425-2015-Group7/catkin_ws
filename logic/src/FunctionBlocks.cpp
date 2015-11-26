@@ -119,10 +119,9 @@ void FunctionBlocks::turn(double yaw)
   geometry_msgs::Pose initial = odomPose;
   
   double init_yaw = tf::getYaw(initial.orientation);
-  
 
   while(tf::getYaw(odomPose.orientation) - init_yaw < yaw) {
-    twist.angular.z = smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+    twist.angular.z = fabs(tf::getYaw(odomPose.orientation) - init_yaw)*a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
     twist_pub->publish(twist);
     ros::spinOnce();
     i++;
@@ -139,89 +138,89 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   this->turn(angle);
-
-   const int rate = 10;
-   ros::Rate loop_rate(rate);
-   int time2wait = 2; // in seconds
-   int i = 0;
-
-   do {
-     ros::spinOnce();
-     i++;
-     loop_rate.sleep();
-   } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
   
- 
-   std::unordered_map<std::string,int> nbrObj;
-   std::unordered_map<std::string, int>::iterator it_nbr;
-   classification::ClassifiedObject current;
-   
-   //Now, let's check what the objectVion Array contains
-   for (int j=0; j < objectsVision->objects.size() ; j++) {
-     // if the class of the current object is not present yet
-     current = objectsVision->objects[j];
-     it_nbr = nbrObj.find(current.name);
-     
-     if ( it_nbr  == nbrObj.end() ) {
-       // We initialize the number of object of this class
-       nbrObj.insert(
-		     {{
-			 current.name, 
-			   1
-			   }}
-		     );
-     } else {
-       // else, we increment the counter
-       nbrObj[current.name] = nbrObj[current.name] + 1;
-     }
-   }
-   
-   int objectsThreshold = 1000;
-   
-   std::unordered_map<std::string, classification::ClassifiedObject> objectsTable;
-   std::unordered_map<std::string, classification::ClassifiedObject>::iterator it_obj;
-
-   for (int j=0; j < objectsVision->objects.size() ; j++) {
-     // if the class of the current object is not present yet
-     current = objectsVision->objects[j];
-     it_obj = objectsTable.find(current.name);
-     
-     // We test if the number of object of this type present is big enough
-     if ( nbrObj[current.name] > objectsThreshold) {
-       if ( it_obj  == objectsTable.end() ) {
-   	 objectsTable.insert(
-   			     {{
-   				 current.name, 
-   				   current
-   				   }}
-   			     );
-       } else {
-   	 //Average of the point
-   	 objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
-   	 objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
-   	 objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
-   	 //Average of the bounding box
-   	 objectsTable[current.name].bb.x0 = (1/2) * (objectsTable[current.name].bb.x0 + current.bb.x0);
-   	 objectsTable[current.name].bb.x1 = (1/2) * ( objectsTable[current.name].bb.x1 + current.bb.x1);
-   	 objectsTable[current.name].bb.y0 = (1/2) * (objectsTable[current.name].bb.y0 + current.bb.y0);
-   	 objectsTable[current.name].bb.y1 = (1/2) * (objectsTable[current.name].bb.y1 + current.bb.y1);
-	 // The other attributes of tege ClassifiedObject can be taken from any object of the array
-       }
-     }
-   }
-   
-   // We reset the Array
-   objectsVision->objects.clear();
-     
-   classification::ClassifiedObjectArray verifiedObjects;
-   
-   for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
-     verifiedObjects.objects.push_back(it_obj->second);
-   }
-   
-   objDetectTimeout = 0;
-
-   return verifiedObjects;
+  const int rate = 10;
+  ros::Rate loop_rate(rate);
+  int time2wait = 2; // in seconds
+  int i = 0;
+  
+  do {
+    ros::spinOnce();
+    i++;
+    loop_rate.sleep();
+  } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
+  
+  
+  std::unordered_map<std::string,int> nbrObj;
+  std::unordered_map<std::string, int>::iterator it_nbr;
+  classification::ClassifiedObject current;
+  
+  //Now, let's check what the objectVion Array contains
+  for (int j=0; j < objectsVision->objects.size() ; j++) {
+    // if the class of the current object is not present yet
+    current = objectsVision->objects[j];
+    it_nbr = nbrObj.find(current.name);
+    
+    if ( it_nbr  == nbrObj.end() ) {
+      // We initialize the number of object of this class
+      nbrObj.insert(
+		    {{
+			current.name, 
+			  1
+			  }}
+		    );
+    } else {
+      // else, we increment the counter
+      nbrObj[current.name] = nbrObj[current.name] + 1;
+    }
+  }
+  
+  int objectsThreshold = 5;
+  
+  std::unordered_map<std::string, classification::ClassifiedObject> objectsTable;
+  std::unordered_map<std::string, classification::ClassifiedObject>::iterator it_obj;
+  
+  for (int j=0; j < objectsVision->objects.size() ; j++) {
+    // if the class of the current object is not present yet
+    current = objectsVision->objects[j];
+    it_obj = objectsTable.find(current.name);
+    
+    // We test if the number of object of this type present is big enough
+    if ( nbrObj[current.name] > objectsThreshold) {
+      if ( it_obj  == objectsTable.end() ) {
+	objectsTable.insert(
+			    {{
+				current.name, 
+				  current
+				  }}
+			    );
+      } else {
+	//Average of the point
+	objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
+	objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
+	objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
+	//Average of the bounding box
+	objectsTable[current.name].bb.x0 = (1/2) * (objectsTable[current.name].bb.x0 + current.bb.x0);
+	objectsTable[current.name].bb.x1 = (1/2) * ( objectsTable[current.name].bb.x1 + current.bb.x1);
+	objectsTable[current.name].bb.y0 = (1/2) * (objectsTable[current.name].bb.y0 + current.bb.y0);
+	objectsTable[current.name].bb.y1 = (1/2) * (objectsTable[current.name].bb.y1 + current.bb.y1);
+	// The other attributes of tege ClassifiedObject can be taken from any object of the array
+      }
+    }
+  }
+  
+  // We reset the Array
+  objectsVision->objects.clear();
+  
+  classification::ClassifiedObjectArray verifiedObjects;
+  
+  for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
+    verifiedObjects.objects.push_back(it_obj->second);
+  }
+  
+  objDetectTimeout = 0;
+  
+  return verifiedObjects;
 }
 
 void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
@@ -280,9 +279,9 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 25;
+  int threshold_vision = 5;
 
-  if (objDetectTimeout > 24) {
+  if (objDetectTimeout > 5) {
     return (objectsVision->objects.size() > threshold_vision);
   } else {
     objDetectTimeout++; 
@@ -493,6 +492,8 @@ void FunctionBlocks::sendEvidence(classification::ClassifiedObjectArray& objArra
     evidence.object_id = objArray.objects[i].name;
     evidence.object_location.transform.translation.x = objArray.objects[i].p.x;
     evidence.object_location.transform.translation.y = objArray.objects[i].p.y;
+
+    evidence_pub->publish(evidence);
   }
 }
 
