@@ -91,16 +91,19 @@ void exploreWall(void)
     
   fb->initPose(*startPose);
   fb->setWallFollower(true);
-  fb->openDoor();
+  //fb->openDoor();
   fb->startTimer(explorationTimeout);
   do{
     fb->setWallFollower(true);
     if(fb->objectDetected()){
-        fb->setWallFollower(false);
-        objectArray = fb->processObject();
-        fb->add2map(objectArray);
-        fb->sendEvidence(objectArray);
-        fb->setWallFollower(true);
+      ROS_INFO("OBBBBBBBBBBBBBBBBBBBBBBBBBBBBJJJJ DETECCTEDDDDDDDDDDDDDDDDd");
+      fb->setWallFollower(false);
+      objectArray = fb->processObject();
+      fb->add2map(objectArray);
+      fb->sendEvidence(objectArray);
+      fb->setWallFollower(true);
+    } else {
+      ROS_INFO("Rien");
     }
     ros::spinOnce();
     loop_rate.sleep();

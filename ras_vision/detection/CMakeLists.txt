@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   message_generation
   message_filters
+  pcl_conversions
+  pcl_ros
 )
 
 ## System dependencies are found with CMake's conventions

@@ -19,12 +19,14 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
         ROS_ERROR("Add objects to map service unreachable.");
         return;
     }
-    
+
+    /*
     //Wait 2 s for the add objects to map service.
     if(!ros::service::waitForService("/Astart/pathTest", 2000)){ 
       ROS_ERROR("GetPath service unreachable.");
       return;
     }
+    */
     
     objectsVision = new classification::ClassifiedObjectArray();
     objectsMap = new classification::ClassifiedObjectArray();
@@ -69,7 +71,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
   static int count = 0;
-  
+
   if (count > 12) {
     if ( msg->objects.size() < 5 ) {
       objectsVision->objects.clear();
@@ -77,10 +79,10 @@ void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::Const
     count = 0;
   }
   count++;
-
-   for (int i=0; i < msg->objects.size(); i++) {
-      objectsVision->objects.push_back(msg->objects[i]);
-    }
+  
+  for (int i=0; i < msg->objects.size(); i++) {
+    objectsVision->objects.push_back(msg->objects[i]);
+  }
 }
 
 void FunctionBlocks::odomCB(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -121,7 +123,8 @@ void FunctionBlocks::turn(double yaw)
   double init_yaw = tf::getYaw(initial.orientation);
 
   while(tf::getYaw(odomPose.orientation) - init_yaw < yaw) {
-    twist.angular.z = fabs(tf::getYaw(odomPose.orientation) - init_yaw)*a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+    ROS_INFO("Turning %f\n", tf::getYaw(odomPose.orientation) - init_yaw);
+    twist.angular.z = 10*fabs(tf::getYaw(odomPose.orientation) - init_yaw)*a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
     twist_pub->publish(twist);
     ros::spinOnce();
     i++;
@@ -134,11 +137,14 @@ void FunctionBlocks::turn(double yaw)
 
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
-   this->speak("Object detected");
+  ROS_INFO("PRRRRRRRRRRRRRRRRRRRRRRRRRRRROCEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEESS");
+  //this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
+  ROS_INFO("ZZZZZZZZZZZZZZZZZZZZZZZZZ");
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   this->turn(angle);
   
+  ROS_INFO("Turno PROCESS OK");
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int time2wait = 2; // in seconds
@@ -279,9 +285,10 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 5;
+  int threshold_vision = 2;
 
-  if (objDetectTimeout > 5) {
+  ROS_INFO("detection");
+  if (objDetectTimeout > 24) {
     return (objectsVision->objects.size() > threshold_vision);
   } else {
     objDetectTimeout++; 

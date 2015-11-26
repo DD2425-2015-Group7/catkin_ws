@@ -5,8 +5,8 @@
 	<include file = "$(find motion_controllers)/launch/pwm_control.launch"/>	
 	<include file = "$(find bb_comparison)/launch/obj_find.launch"/>
 	<include file = "$(find localization)/launch/localize.launch"/>
-	<node pkg = "ras_espeak" type = "espeak_node" respawn = "false" name = "espeak_node" output = "screen"/>
-	<node pkg = "logic" type = "behaviour.cpp" respawn = "false" name = "behaviour.cpp" output = "screen"/>
-	<node pkg = "wall_follower" type = "wall_follower.cpp" respawn = "false" name = "wall_follower.cpp" output= "screen"/>
+	<node pkg = "ras_espeak" type = "espeak_node" respawn = "false" name = "espeak_node" output = "log"/>
+	<node pkg = "logic" type = "behaviour" respawn = "false" name = "behaviour" output = "screen"/>
+	<node pkg = "wall_follower" type = "wall_follower" respawn = "false" name = "wall_follower" output= "log"/>
 
 </launch>
