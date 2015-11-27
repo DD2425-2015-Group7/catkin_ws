@@ -108,9 +108,9 @@ double FunctionBlocks::smoothUpdateVelocity(double current, double required, dou
 void FunctionBlocks::turn(double yaw) 
 {
   ROS_INFO("Turn");
-  const int rate = 10;
+  const int rate = 50;
   ros::Rate loop_rate(rate);
-  int timout = 2;
+  int timout = 5;
   int i = 0;
   float a_speed = 1.5;
 
@@ -124,17 +124,19 @@ void FunctionBlocks::turn(double yaw)
   
   double init_yaw = tf::getYaw(initial.orientation);
 
-  ROS_INFO("Difference %f\n", tf::getYaw(odomPose.orientation) - init_yaw);   
+  double diff = tf::getYaw(odomPose.orientation) - init_yaw;
+  ROS_INFO("Difference turning%f\n", diff);
 
   do {
-    ROS_INFO("Turning %f\n", tf::getYaw(odomPose.orientation) - init_yaw);
-    twist.angular.z = /*(tf::getYaw(odomPose.orientation) - init_yaw)**/a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+    ROS_INFO("Difference turning%f\n", diff);
+    diff = tf::getYaw(odomPose.orientation) - init_yaw;
+    twist.angular.z = /*fabs(diff) **/ a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
     twist_pub->publish(twist);
     ros::spinOnce();
+    loop_rate.sleep();  
     i++;
-    loop_rate.sleep();
     } while ( (ros::ok()) && (i < (rate*timout)) 
-	      && (tf::getYaw(odomPose.orientation) - init_yaw < yaw) );
+	      && (diff < yaw) );
 
   ROS_INFO("End turn");
   twist.angular.z = 0;
@@ -144,7 +146,7 @@ void FunctionBlocks::turn(double yaw)
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
   ROS_INFO("Processing start");
-  //this->speak("Object detected");
+  this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   this->turn(angle);

@@ -21,6 +21,7 @@
 #include <pcl/surface/mls.h>
 #include <pcl/features/normal_3d.h>
 #include <pcl/kdtree/kdtree.h>
+#include <pcl/filters/conditional_removal.h>
 #include "detection/BoundingBox.h"
 #include "detection/BoundingBoxArray.h"
 #include <pcl/common/centroid.h>
@@ -87,6 +88,65 @@ public:
         std::cout << "The pixel is " << x << "," << y << std::endl;
         return coord;
     }
+    void PassFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr input, pcl::PointCloud<pcl::PointXYZRGB>::Ptr output,int xmin,int xmax,int ymin,int ymax){
+        pcl::PassThrough<pcl::PointXYZRGB> filterx;
+        pcl::PassThrough<pcl::PointXYZRGB> filtery;
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr smaller_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+        filterx.setFilterFieldName("x");
+        pcl::PointCloud<pcl::PointXYZRGB> cloud;
+        cloud = *input;
+        //std::cerr << "min X: " << xmin << ", max X: " << xmax << std::endl;
+        //std::cerr << "min y: " <<ymin<< ", max y: " << ymax<< std::endl;
+       /* float xmin1 = cloud(xmin, ymin).x; // (270, 190) for centered bounding box...
+        float xmax1 = cloud(xmax,ymax).x;  // (370,290)
+        float ymin1 = cloud(xmin, ymin).y; // (270, 190)
+        float ymax1 = cloud(xmax, ymax).y; // (370, 290)
+        while(isnan(xmin1)||isnan(xmax1)||isnan(ymin1)||isnan(ymax1)){
+            if(isnan(xmin1)){
+                xmin -=1;
+
+                xmin1 = cloud(xmin, ymin).x;
+                ymin1 = cloud(xmin,ymin).y;
+            }
+            if(isnan(xmax1)){
+                xmax+=1;
+                xmax1 = cloud(xmax,ymin).x;
+                ymax1 = cloud(xmax,ymin).y;
+            }
+            if(isnan(ymin1)){
+                ymin -= 1;
+                xmin1 = cloud(xmin, ymin).x;
+                ymin1 = cloud(xmin,ymin).y;
+            }
+            if(isnan(ymax1)){
+                ymax+=1;
+                xmax1 = cloud(xmax,ymin).x;
+                ymax1 = cloud(xmax,ymin).y;
+            }
+        }
+        filterx.setInputCloud(input);
+        */
+        /*float xmin1 = -2;
+        float xmax1 =
+        std::cerr << "min Xe: " << xmin1 << ", max Xe: " << xmax1 << std::endl;
+        std::cerr << "min ye: " <<ymin1<< ", max ye: " << ymax1<< std::endl;
+
+        filterx.setFilterLimits(xmin1, xmax1);
+        filterx.setFilterLimitsNegative (false);
+        filterx.filter(*smaller_cloud);*/
+        float ymin1 = -2;
+        float ymax1 = 0.20;
+        filtery.setFilterFieldName("y");
+        filtery.setFilterLimitsNegative (false);
+        filtery.setInputCloud(input);
+
+        filtery.setFilterLimits(ymin1,ymax1);
+
+        filtery.filter(*output);
+
+
+    }
     void cloud_callback(const sensor_msgs::PointCloud2::ConstPtr& msg, const sensor_msgs::Image::ConstPtr& image_msg)
     {
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_blob(new pcl::PointCloud<pcl::PointXYZRGB>), cloud_filtered_blob(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -108,7 +168,7 @@ public:
         float x_1, y_1;
         int isObject;
 
-
+        //PassFilter(init_cloud, cloud_blob, 0, 192,60, 580);
         cloud_blob = init_cloud;
 
         //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
@@ -116,7 +176,7 @@ public:
         //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
         pcl::VoxelGrid<pcl::PointXYZRGB> sor;
         sor.setInputCloud(cloud_blob);
-        sor.setLeafSize(0.001f, 0.001f, 0.1f);
+        sor.setLeafSize(0.005f, 0.005f, 0.1f);
         sor.filter(*cloud_filtered_blob);
 
         cloud_filtered = cloud_filtered_blob;
@@ -174,7 +234,7 @@ public:
             std::vector<pcl::PointIndices> cluster_indices;
             pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
             ec.setClusterTolerance (0.01); // 10cm
-            ec.setMinClusterSize (100);
+            ec.setMinClusterSize (1200);
             ec.setMaxClusterSize (15000);
             ec.setSearchMethod (tree);
             ec.setInputCloud (cloud_filtered);
@@ -187,13 +247,13 @@ public:
             }else{
                 int j = 0;
                 plane_extraction::BoundingBox_FloatArray bbox_array_msg;
-               geometry_msgs::PolygonStamped point_array;
+                geometry_msgs::PolygonStamped point_array;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
                 {
                     //std::cerr << "==========================New Cluster====================================" << std::endl;
                     //uncomment this and comment the previous declaration if you only want the "newest" object to be found
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
-                    pcl::PointCloud<pcl::PointXYZRGB> cloud;
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit){
                         cloud_cluster->points.push_back (cloud_filtered->points[*pit]); //
@@ -206,29 +266,55 @@ public:
                     p.y = (double) centroid[1];
                     p.z = (double) centroid[2];
 
-                    if(centroid[2] < 1){
+                    if(centroid[2] < 1 ){
+                        // build the condition
+                        int rMax = 50;
+                        int rMin = 0;
+                        int gMax = 50;
+                        int gMin = 0;
+                        int bMax = 50;
+                        int bMin = 0;
+                        pcl::ConditionAnd<pcl::PointXYZRGB>::Ptr color_cond (new pcl::ConditionAnd<pcl::PointXYZRGB> ());
+                        color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("r", pcl::ComparisonOps::LT, rMax)));
+                        color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("r", pcl::ComparisonOps::GT, rMin)));
+                        color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("g", pcl::ComparisonOps::LT, gMax)));
+                        color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("g", pcl::ComparisonOps::GT, gMin)));
+                        color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("b", pcl::ComparisonOps::LT, bMax)));
+                        color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("b", pcl::ComparisonOps::GT, bMin)));
+
+                        // build the filter
+                        pcl::ConditionalRemoval<pcl::PointXYZRGB> condrem (color_cond);
+                        condrem.setInputCloud (cloud_cluster);
+                        condrem.setKeepOrganized(true);
+
+                        // apply filter
+                        condrem.filter (*cloud);
 
                         /*std::cout << "The XYZ coordinates of the centroid are: ("
                                   << centroid[0] << ", "
                                   << centroid[1] << ", "
                                   << centroid[2] << ")." << std::endl;*/
-                        std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
-
-                    }
-
-                    x_width = cloud_cluster->width + 20;
-                    y_width = cloud_cluster->height + 20;
-
-                    //Determine the dimension of the bounding box ===========================
-                    Eigen::Vector4f min_pt, max_pt;
-                    pcl::getMinMax3D (*cloud_filtered,it->indices, min_pt, max_pt);
-                    double x_0_3D = min_pt[0];
-                    double y_0_3D = min_pt[1];
-                    double x_1_3D = max_pt[0];
-                    double y_1_3D = max_pt[1];
+                        std::cout << "PointCloud representing the Cluster: " << cloud->points.size () << " data points." << std::endl;
 
 
-                    /*for (pcl::PointCloud<pcl::PointXYZRGB>::iterator pit = cloud_filtered->points.begin(); pit < cloud_filtered->points.end (); ++pit){
+
+                        x_width = cloud->width + 20;
+                        y_width = cloud->height + 20;
+
+                        //Determine the dimension of the bounding box ===========================
+                        std::cerr << "before if"<< std::endl;
+                        if(cloud->points.size() > 100){
+
+
+                            Eigen::Vector4f min_pt, max_pt;
+                            pcl::getMinMax3D (*cloud_filtered,it->indices, min_pt, max_pt);
+                            double x_0_3D = min_pt[0];
+                            double y_0_3D = min_pt[1];
+                            double x_1_3D = max_pt[0];
+                            double y_1_3D = max_pt[1];
+
+
+                            /*for (pcl::PointCloud<pcl::PointXYZRGB>::iterator pit = cloud_filtered->points.begin(); pit < cloud_filtered->points.end (); ++pit){
                         if(pit->x == x_0_3D){
                             if(pit->y == y_0_3D){
                                 std::cerr << "det är samma " << std::endl;
@@ -239,58 +325,61 @@ public:
 
                     }*/
 
-                    //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
-                    plane_extraction::BoundingBox_Float bbox_msg;
-                    cloud = *cloud_cluster;
-                    //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
+                            //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
+                            plane_extraction::BoundingBox_Float bbox_msg;
+                           // cloud = *cloud_cluster;
+                            //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
 
-                    // =====================================================================
-                    std::vector<int> temp0;
-                    std::vector<int> temp1;
+                            // =====================================================================
+                            std::vector<int> temp0;
+                            std::vector<int> temp1;
 
-                    x_0 = float(x_0_3D);
-                    x_1 = float(x_1_3D);
-                    y_0 = float(y_0_3D);
-                    y_1 = float(y_1_3D);
+                            x_0 = float(x_0_3D);
+                            x_1 = float(x_1_3D);
+                            y_0 = float(y_0_3D);
+                            y_1 = float(y_1_3D);
+std::cerr << "after if"<< std::endl;
+                            bbox_msg.x0 = x_0;
+                            bbox_msg.y0 = y_0;
+                            bbox_msg.x1 = x_1;
+                            bbox_msg.y1 = y_1;
+                            //std::cerr << "the points bb: "<< "("<<x_0<< ", " << y_0<<", " << x_1 << ", " << y_1 << ")" << std::endl;
 
-                    bbox_msg.x0 = x_0;
-                    bbox_msg.y0 = y_0;
-                    bbox_msg.x1 = x_1;
-                    bbox_msg.y1 = y_1;
-                    //std::cerr << "the points bb: "<< "("<<x_0<< ", " << y_0<<", " << x_1 << ", " << y_1 << ")" << std::endl;
+                           // cloud->width = cloud->points.size ();
 
-                    cloud_cluster->width = cloud_cluster->points.size ();
-                    if(cloud_cluster->width > 5000){ //TBD
-                        isObject = 0;
-                       // std::cerr << "skräp vid: "<< "(" << centroid[0] << ", " << centroid[1] <<", " << centroid[2] << ")."<< std::endl;
-                    }else{
-                        isObject = 1;
+                            if(cloud->points.size() > 5000){ //TBD
+                                isObject = 0;
+                                // std::cerr << "skräp vid: "<< "(" << centroid[0] << ", " << centroid[1] <<", " << centroid[2] << ")."<< std::endl;
+                            }else{
+                                isObject = 1;
+                            }
+                            bbox_msg.prob = float(isObject);
+                            bbox_array_msg.bounding_boxes.push_back(bbox_msg);
+                            cloud_cluster->height = 1;
+                            cloud_cluster->is_dense = true;
+
+
+                            sensor_msgs::PointCloud2 out;
+                            geometry_msgs::Point32 pkt;
+
+                            pkt.x = centroid[2]; //in the robot coordinate, needs to be done in TF, maybe array to fit with bounding box??
+                            pkt.y = centroid[0];
+                            pkt.z = centroid[1];
+
+                            pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x)); //fixed with tf later?
+
+                            cloud->header = cloud_filtered->header;
+                            pcl::toROSMsg(*cloud, out);
+
+
+                            //what to publish: bounding box : bb message,< publishes in the same msg. done
+                            //centroid : geometry_msgs/Point.msg done    |
+                            // and isObject : std_msgs/Bool.msg. --------|
+                            c_pub.publish(out);
+                            //obj_loc_pub.publish(pkt);
+                            point_array.polygon.points.push_back(pkt);
+                        }
                     }
-                    bbox_msg.prob = float(isObject);
-                    bbox_array_msg.bounding_boxes.push_back(bbox_msg);
-                    cloud_cluster->height = 1;
-                    cloud_cluster->is_dense = true;
-
-
-                    sensor_msgs::PointCloud2 out;
-                    geometry_msgs::Point32 pkt;
-
-                    pkt.x = centroid[2]; //in the robot coordinate, needs to be done in TF, maybe array to fit with bounding box??
-                    pkt.y = centroid[0];
-                    pkt.z = centroid[1];
-
-                    pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x)); //fixed with tf later?
-
-                    cloud_cluster->header = cloud_filtered->header;
-                    pcl::toROSMsg(*cloud_cluster, out);
-
-
-                    //what to publish: bounding box : bb message,< publishes in the same msg. done
-                    //centroid : geometry_msgs/Point.msg done    |
-                    // and isObject : std_msgs/Bool.msg. --------|
-                    c_pub.publish(out);
-                    //obj_loc_pub.publish(pkt);
-                    point_array.polygon.points.push_back(pkt);
                     j++;
                 }
                 obj_loc_pub.publish(point_array);

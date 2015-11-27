@@ -91,7 +91,7 @@ void exploreWall(void)
     
   fb->initPose(*startPose);
   fb->setWallFollower(true);
-  //fb->openDoor();
+  fb->openDoor();
   fb->startTimer(explorationTimeout);
   do{
     fb->setWallFollower(true);
