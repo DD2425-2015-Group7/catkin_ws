@@ -72,6 +72,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
   ROS_INFO("Jesper");
   static int count = 0;
+  // Copy the frame_id of the header
+  objectsVision->header.frame_id = msg->header.frame_id; 
 
   if (count > 12) {
     if ( msg->objects.size() < 5 ) {
@@ -162,6 +164,10 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   this->turn(angle);
   
+  classification::ClassifiedObjectArray verifiedObjects;
+  
+  verifiedObjects.header.frame_id = objectsVision->header.frame_id;
+
   ROS_INFO("Turn process OK");
   const int rate = 10;
   ros::Rate loop_rate(rate);
@@ -234,12 +240,10 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
       }
     }
   }
-  
+
   // We reset the Array
   objectsVision->objects.clear();
-  
-  classification::ClassifiedObjectArray verifiedObjects;
-  
+
   for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
     verifiedObjects.objects.push_back(it_obj->second);
   }
