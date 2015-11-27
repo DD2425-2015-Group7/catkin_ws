@@ -5,7 +5,9 @@
   <include file="$(find ir_sensors)/launch/publish.launch" />
   <include file="$(find motion_controllers)/launch/pwm_control.launch" />
   <include file="$(find localization)/launch/localize.launch" />
+  <!--
   <include file="$(find path_planning)/launch/bag_planner.launch" />
+  -->
 
 
 </launch> 

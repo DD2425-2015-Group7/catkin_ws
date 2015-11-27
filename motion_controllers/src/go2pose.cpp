@@ -133,19 +133,15 @@ int main(int argc, char *argv[])
         
         if(distance > tolDistL && !turningEnabled){
             curs = fw;
-            ROS_INFO("forward");
             goForward(dt);
         }else if(distance > tolDistH && turningEnabled){
             curs = t1;
-            ROS_INFO("turn 1");
             turning(angle, dt);
         }else if(fabs(yawFin) > tolYawL && distance < tolDistH){
             curs = t2;
-            ROS_INFO("turn 2");
             turning(yawFin, dt);
         }else{
             curs = stop;
-            ROS_INFO("stop");
             twist->linear.x = 0.0;
             twist->angular.z = 0.0;
         }

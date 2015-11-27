@@ -113,6 +113,51 @@ bool updateMap(void)
     return true;
 }
 
+int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y)
+{
+    int xi, yi;
+    if(x < 0.0 || y < 0.0)
+        return -1;
+    xi = (x/m.info.resolution);
+    yi = (y/m.info.resolution);
+    if(xi >= m.info.width - 1)
+        return -1;
+    if(yi >= m.info.height - 1)
+        return -1;
+    return m.data[yi * m.info.width + xi];
+}
+
+double getDist(double x, double y)
+{
+    int v = getMapValue(*mapDistance, x, y);
+    if(v < 0)
+        return -10.0;
+    return (v * mapDistance->info.resolution);
+}
+
+bool isPointFree(double x, double y)
+{
+    int v = getMapValue(*mapInflated, x, y);
+    if(v < 0)
+        return false;
+    return (v < minOccupied);
+}
+
+void particles2PoseArray(const std::vector<MonteCarlo::StateW> &particles, geometry_msgs::PoseArray &pa)
+{
+    geometry_msgs::Pose p;
+    pa.poses.clear();
+    for(int i = 0; i<particles.size(); i++){
+        p.position.x = particles[i].s.x;
+        p.position.y = particles[i].s.y;
+        p.position.z = particles[i].s.z;
+        tf::quaternionTFToMsg(
+            tf::createQuaternionFromRPY(particles[i].s.roll, particles[i].s.pitch, particles[i].s.yaw),
+            p.orientation);
+        pa.poses.push_back(p);
+    }
+}
+
 void initMcl(const geometry_msgs::Pose::ConstPtr& p)
 {
     double csz = mapInflated->info.resolution;
@@ -158,37 +203,7 @@ void runMonteCarlo(void)
     }
 }
 
-int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y)
-{
-    int xi, yi;
-    if(x < 0.0 || y < 0.0)
-        return -1;
-    xi = (x/m.info.resolution);
-    yi = (y/m.info.resolution);
-    if(xi >= m.info.width - 1)
-        return -1;
-    if(yi >= m.info.height - 1)
-        return -1;
-    return m.data[yi * m.info.width + xi];
-}
-
-double getDist(double x, double y)
-{
-    int v = getMapValue(*mapDistance, x, y);
-    if(v < 0)
-        return -10.0;
-    return (v * mapDistance->info.resolution);
-}
-
-bool isPointFree(double x, double y)
-{
-    int v = getMapValue(*mapInflated, x, y);
-    if(v < 0)
-        return false;
-    return (v < minOccupied);
-}
-
-void publishTransform(void)
+tf::Stamped<tf::Pose> mclTransform(void)
 {
     tf::Stamped<tf::Pose> odom2map;
     try{
@@ -200,9 +215,21 @@ void publishTransform(void)
     catch(tf::TransformException)
     {
         ROS_DEBUG("Map -> Odom transform failed.");
-        return;
     }
+    return odom2map;
+}
 
+void publishTransform(tf::Stamped<tf::Pose> odom2map)
+{
+    /*
+    double x, y, th;
+    x = odom2map.getOrigin()[0];
+    y = odom2map.getOrigin()[1];
+    th = tf::getYaw(odom2map.getRotation());
+    ROS_INFO("x = %f y = %f th = %f",
+        (x), (y), (th));
+        * */
+        
     tf::Transform tfom = tf::Transform(tf::Quaternion(odom2map.getRotation()),
                                  tf::Point(odom2map.getOrigin()));
     tf::StampedTransform map_trans_stamped(tfom.inverse(), current_time, mapFrame, odomFrame);
@@ -229,21 +256,6 @@ void publishTransform(void)
     */
 }
 
-void particles2PoseArray(const std::vector<MonteCarlo::StateW> &particles, geometry_msgs::PoseArray &pa)
-{
-    geometry_msgs::Pose p;
-    pa.poses.clear();
-    for(int i = 0; i<particles.size(); i++){
-        p.position.x = particles[i].s.x;
-        p.position.y = particles[i].s.y;
-        p.position.z = particles[i].s.z;
-        tf::quaternionTFToMsg(
-            tf::createQuaternionFromRPY(particles[i].s.roll, particles[i].s.pitch, particles[i].s.yaw),
-            p.orientation);
-        pa.poses.push_back(p);
-    }
-}
-
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "mcl_node");
@@ -268,11 +280,11 @@ int main(int argc, char **argv)
     n.param<double>("ir_model_z_hit", irZhit, 0.95);
     n.param<double>("ir_model_z_random_over_z_max", irZrm, 0.05);
     
-    int nParticles, rate;
+    int nParticles, mcl_rate;
     double minDelta, aslow, afast;
     double crashRadius, crashYaw, stdXY, stdYaw;
     n.param<int>("mcl_particles", nParticles, 200);
-    n.param<int>("mcl_rate", rate, 5);
+    n.param<int>("mcl_rate", mcl_rate, 5);
     n.param<double>("mcl_init_cone_radius", initConeRadius, 0.2);
     n.param<double>("mcl_init_yaw_variance", initYawVar, 0.3);
     n.param<double>("mcl_min_position_delta", minDelta, 0.001);
@@ -337,30 +349,53 @@ int main(int argc, char **argv)
     assert(csz > 0.00001);
     mc->init(pose, initConeRadius, initYawVar, wc*csz, hc*csz);
     mclEnabled = true;
-    
 
     current_time = ros::Time::now();
-    
-
+    int rate = 20, counter = 0;
     ros::Rate loop_rate(rate);
+    
+    if(!updateMap())
+        return -1;
+    
+    tf::Stamped<tf::Pose> odom2map;
+    odom2map = mclTransform();
+    struct PoseState odom0;
+    bool firstMcl = true;
     
 	while (ros::ok())
 	{
-        if(!updateMap()){
-            return -1;
-        } 
-        if(mclEnabled){
-            runMonteCarlo();
-            particles2PoseArray(mc->getParticles(), poseArray);
-            particle_pub_obj.publish(poseArray);
+        if(counter % (rate/mcl_rate) == 0){
+            if(!updateMap()){
+                return -1;
+            } 
+            if(mclEnabled){
+                if(firstMcl){
+                    odom0 = odomState;
+                    firstMcl = false;
+                }
+                double dx = odomState.x - odom0.x;
+                double dy = odomState.y - odom0.y;
+                odom0 = odomState;
+                runMonteCarlo();
+                particles2PoseArray(mc->getParticles(), poseArray);
+                particle_pub_obj.publish(poseArray);
+                //Do not update transform when rotating on spot.
+                if(std::sqrt(dx*dx + dy*dy) > 0.05/(double)mcl_rate)
+                    odom2map = mclTransform();
+            }
+            
+            
+            counter = 0;
         }
-        publishTransform();
+        counter++;
+        publishTransform(odom2map);
 		ros::spinOnce();
 		loop_rate.sleep();
         
         ros::Duration last_update = ros::Time::now() - current_time;
-        if(last_update > ros::Duration(0.15))
+        if(last_update > ros::Duration(1.2/(double)rate))
             current_time = ros::Time::now();
+        
 	}
 
 
