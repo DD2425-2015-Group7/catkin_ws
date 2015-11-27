@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   detection
   message_filters
+  message_generation
+
 )
 
 ## System dependencies are found with CMake's conventions
@@ -102,12 +104,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES plane_extraction
-#  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs
-#  DEPENDS system_lib
-)
+
 
 ###########
 ## Build ##
@@ -176,7 +173,21 @@ include_directories(
 #   # myfile2
 #   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 # )
-
+add_message_files(
+   FILES
+   BoundingBox_Float.msg
+   BoundingBox_FloatArray.msg
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+catkin_package(
+  #INCLUDE_DIRS include
+#  LIBRARIES plane_extraction
+ CATKIN_DEPENDS message_runtime#pcl_conversions pcl_ros roscpp sensor_msgs
+#  DEPENDS system_lib
+)
 #############
 ## Testing ##
 #############
