@@ -2,7 +2,8 @@
 <launch>
   <master auto="start"/>
   
-  <node pkg="motion_controllers" type="path_follower" respawn="false" name="path_follower" output="screen">
+  <node pkg="motion_controllers" type="go2pose" respawn="false" name="go2pose" output="screen">
+      <rosparam file="$(find motion_controllers)/yaml/go2pose_params.yaml" command="load" />
   </node> 
   
   <node pkg="motion_controllers" type="pub_points_list" respawn="false" name="pub_points_list" output="screen">

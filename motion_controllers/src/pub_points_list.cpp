@@ -25,9 +25,12 @@ std::string TargetFrameName;
 geometry_msgs::PoseStamped goalPose;
 std_msgs::String str;
 
+int nextPoint = 0;
+
 void setPath(const nav_msgs::Path::ConstPtr& msg)
 {
     ROS_INFO("set path");
+    nextPoint = 0;
     path.header = msg->header;
     path.poses = msg->poses;
 }
@@ -35,70 +38,72 @@ void setPath(const nav_msgs::Path::ConstPtr& msg)
 
 void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
 {
-  // TODO: when we need to follow another path, "nextpoint" shoud be refreshed (set) to zero
-  static int nextPoint = 0;
+    static bool lastStopped = false, stopped = true;
+    if(path.poses.size() < 1)
+    {
+        goalPose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
+        goalPose.pose.position.x = 0.0;
+        goalPose.pose.position.y = 0.0;
+        stopped = true;
+        if(stopped == true && lastStopped == true){
 
-  if(path.poses.size() < 1)
-  {
-    return;
-  }
-  //ROS_INFO("calculatePosition");
-  if(nextPoint > path.poses.size() - 1)
-  {
-
-      str.data = "destination reached";
-      pub_espeak->publish(str);
-    ROS_INFO("Destination reached");
-    //set velocity to zero
-    goalPose.pose.position.x = 0.0;
-    goalPose.pose.position.y = 0.0;
-  }
-  else
-  {
-      geometry_msgs::PoseStamped p;
-      p.header = path.header;
-      p.header.stamp = ros::Time(0);
-      p.pose = path.poses[nextPoint].pose;
-
-      tf::StampedTransform transform;
-      try
-      {
-          tf_listener->waitForTransform(TargetFrameName, p.header.frame_id, p.header.stamp, ros::Duration(1.0) );
-          //tf_listener->lookupTransform(TargetFrameName, p.header.frame_id, ros::Time(0), transform);
-          tf_listener->transformPose(TargetFrameName,p,goalPose);
-          //transform.transformPose(TargetFrameName,p,goalPose);
-      }
-      catch(tf::TransformException &ex)
-      {
-        ROS_ERROR("%s",ex.what());
+        }else{
+            pub_pose->publish(goalPose.pose);
+        }
+        lastStopped = stopped;
         return;
-        ros::Duration(1.0).sleep();
-      }
+    }
+    if(nextPoint > path.poses.size() - 1)
+    {
+        ROS_INFO("Destination reached");
+        //set velocity to zero
+        goalPose.pose.position.x = 0.0;
+        goalPose.pose.position.y = 0.0;
+        stopped = true;
+    }else{
+        stopped = false;
+        geometry_msgs::PoseStamped p;
+        p.header = path.header;
+        p.header.stamp = ros::Time(0);
+        p.pose = path.poses[nextPoint].pose;
 
-      double x = goalPose.pose.position.x;
-      double y = goalPose.pose.position.y;
+        tf::StampedTransform transform;
+        try
+        {
+            tf_listener->waitForTransform(TargetFrameName, p.header.frame_id, p.header.stamp, ros::Duration(1.0) );
+            tf_listener->transformPose(TargetFrameName,p,goalPose);
+        }
+        catch(tf::TransformException &ex)
+        {
+            ROS_ERROR("%s",ex.what());
+            return;
+            ros::Duration(1.0).sleep();
+        }
+
+        double x = goalPose.pose.position.x;
+        double y = goalPose.pose.position.y;
         //If not the last path pose, do not perform final rotation.
         if(nextPoint < path.poses.size() - 1){
             goalPose.pose.orientation = tf::createQuaternionMsgFromYaw(0.0);
         }
-   double distance = sqrt(x*x + y*y);
-   if(distance < closeEnough)
-   {
-    goalPose.pose.position.x = 0.0;
-    goalPose.pose.position.y = 0.0;
+        double distance = sqrt(x*x + y*y);
+        if(distance < closeEnough)
+        {
+            goalPose.pose.position.x = 0.0;
+            goalPose.pose.position.y = 0.0;
+            nextPoint++;
+        }
+    }
 
-    nextPoint++;
-    // rostopic pub /espeak/string std_msgs/String "Hi"
-    str.data = "go to next point";
-    pub_espeak->publish(str);
-    //ROS_INFO("NextPoint");
-   }
-  }
-
-  ROS_INFO("Goal Point X :%f",goalPose.pose.position.x);
-  ROS_INFO("Goal Point Y :%f",goalPose.pose.position.y);
-  //TargetPose
-  pub_pose->publish(goalPose.pose);
+    ROS_INFO("Goal Point X :%f",goalPose.pose.position.x);
+    ROS_INFO("Goal Point Y :%f",goalPose.pose.position.y);
+    
+    if(stopped == true && lastStopped == true){
+        
+    }else{
+        pub_pose->publish(goalPose.pose);
+    }
+    lastStopped = stopped;
 }
 
 
@@ -107,7 +112,7 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "pub_points_list");
     ros::NodeHandle handle;
 
-    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("path_planner/path",1000,setPath);
+    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/path_planner/path",1000,setPath);
     //ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/Astar/path",1000,setPath);
 
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("/odom",1000,calculatePosition);
@@ -123,7 +128,7 @@ int main(int argc, char *argv[])
     tf_listener = new tf::TransformListener();
 
 
-    ros::Rate loopRate(10);
+    ros::Rate loopRate(20);
 
 
     while(ros::ok())

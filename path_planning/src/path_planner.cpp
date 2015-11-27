@@ -41,7 +41,7 @@ nav_msgs::Path loadPath(std::string bagFile, std::string poseTopic)
     bag.close();
     assert(path.poses.size()>0);
     path.header.stamp = ros::Time::now();
-    path.header.frame_id = path.poses[0].header.frame_id;
+    path.header.frame_id = path.poses[0].header.frame_id; //path.poses[0].header.frame_id; // "odom"
     return path;
     
 }
@@ -74,10 +74,13 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(rate);
     
     nav_msgs::Path path = loadPath(bagFile, "/move_base_simple/goal");
+    
+    ros::spinOnce(); // Run the callbacks.
+    loop_rate.sleep();
+    path_pub->publish(path);
 
 	while (ros::ok())
 	{
-        path_pub->publish(path);
 		ros::spinOnce(); // Run the callbacks.
 		loop_rate.sleep();
 	}
