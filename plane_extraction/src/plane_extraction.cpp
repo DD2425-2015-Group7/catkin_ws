@@ -169,6 +169,8 @@ public:
         int isObject;
 
         //PassFilter(init_cloud, cloud_blob, 0, 192,60, 580);
+        // build the condition
+
         cloud_blob = init_cloud;
 
         //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
@@ -176,7 +178,7 @@ public:
         //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
         pcl::VoxelGrid<pcl::PointXYZRGB> sor;
         sor.setInputCloud(cloud_blob);
-        sor.setLeafSize(0.005f, 0.005f, 0.1f);
+        sor.setLeafSize(0.001f, 0.001f, 0.1f);
         sor.filter(*cloud_filtered_blob);
 
         cloud_filtered = cloud_filtered_blob;
@@ -226,7 +228,9 @@ public:
             extract.filter(*cloud_f);
             *cloud_filtered = *cloud_f;
         }
-       // std::cerr << "Between IFS" << std::endl;
+       //std::cerr << "Between IFS" << std::endl;
+
+
         if(cloud_filtered->width*cloud_filtered->height != 0 ){
             pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
             tree->setInputCloud(cloud_filtered);
@@ -234,7 +238,7 @@ public:
             std::vector<pcl::PointIndices> cluster_indices;
             pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
             ec.setClusterTolerance (0.01); // 10cm
-            ec.setMinClusterSize (1200);
+            ec.setMinClusterSize (500);
             ec.setMaxClusterSize (15000);
             ec.setSearchMethod (tree);
             ec.setInputCloud (cloud_filtered);
@@ -243,14 +247,14 @@ public:
             //find objects and put them in a new separate point cloud. only takes the objects that consist of 900-3000 particles
 
             if(cluster_indices.begin() == cluster_indices.end()){
-                //std::cerr << "samma" << std::endl;
+                std::cerr << "samma" << std::endl;
             }else{
                 int j = 0;
                 plane_extraction::BoundingBox_FloatArray bbox_array_msg;
                 geometry_msgs::PolygonStamped point_array;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
                 {
-                    //std::cerr << "==========================New Cluster====================================" << std::endl;
+                    std::cerr << "==========================New Cluster====================================" << std::endl;
                     //uncomment this and comment the previous declaration if you only want the "newest" object to be found
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -268,11 +272,25 @@ public:
 
                     if(centroid[2] < 1 ){
                         // build the condition
-                        int rMax = 50;
+
+                        /*std::cout << "The XYZ coordinates of the centroid are: ("
+                                  << centroid[0] << ", "
+                                  << centroid[1] << ", "
+                                  << centroid[2] << ")." << std::endl;*/
+                        std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+
+
+
+                        x_width = cloud_cluster->width + 20;
+                        y_width = cloud_cluster->height + 20;
+
+                        //Determine the dimension of the bounding box ===========================
+                        std::cerr << "before if"<< std::endl;
+                        /*int rMax = 250;
                         int rMin = 0;
-                        int gMax = 50;
+                        int gMax = 250;
                         int gMin = 0;
-                        int bMax = 50;
+                        int bMax = 250;
                         int bMin = 0;
                         pcl::ConditionAnd<pcl::PointXYZRGB>::Ptr color_cond (new pcl::ConditionAnd<pcl::PointXYZRGB> ());
                         color_cond->addComparison (pcl::PackedRGBComparison<pcl::PointXYZRGB>::Ptr (new pcl::PackedRGBComparison<pcl::PointXYZRGB> ("r", pcl::ComparisonOps::LT, rMax)));
@@ -284,26 +302,13 @@ public:
 
                         // build the filter
                         pcl::ConditionalRemoval<pcl::PointXYZRGB> condrem (color_cond);
-                        condrem.setInputCloud (cloud_cluster);
+                        condrem.setInputCloud (cloud);
                         condrem.setKeepOrganized(true);
 
                         // apply filter
-                        condrem.filter (*cloud);
-
-                        /*std::cout << "The XYZ coordinates of the centroid are: ("
-                                  << centroid[0] << ", "
-                                  << centroid[1] << ", "
-                                  << centroid[2] << ")." << std::endl;*/
-                        std::cout << "PointCloud representing the Cluster: " << cloud->points.size () << " data points." << std::endl;
-
-
-
-                        x_width = cloud->width + 20;
-                        y_width = cloud->height + 20;
-
-                        //Determine the dimension of the bounding box ===========================
-                        std::cerr << "before if"<< std::endl;
-                        if(cloud->points.size() > 100){
+                        condrem.filter (*cloud_cluster);
+                        */
+                        if(cloud_cluster->points.size() > 100){
 
 
                             Eigen::Vector4f min_pt, max_pt;
@@ -345,19 +350,21 @@ std::cerr << "after if"<< std::endl;
                             bbox_msg.y1 = y_1;
                             //std::cerr << "the points bb: "<< "("<<x_0<< ", " << y_0<<", " << x_1 << ", " << y_1 << ")" << std::endl;
 
-                           // cloud->width = cloud->points.size ();
 
-                            if(cloud->points.size() > 5000){ //TBD
+
+                           if(cloud_cluster->width*cloud_cluster->height > 5000){ //TBD
                                 isObject = 0;
                                 // std::cerr << "skräp vid: "<< "(" << centroid[0] << ", " << centroid[1] <<", " << centroid[2] << ")."<< std::endl;
                             }else{
                                 isObject = 1;
                             }
+
                             bbox_msg.prob = float(isObject);
                             bbox_array_msg.bounding_boxes.push_back(bbox_msg);
-                            cloud_cluster->height = 1;
-                            cloud_cluster->is_dense = true;
+                            /*cloud_cluster->height = 1;
 
+                            cloud_cluster->is_dense = true;
+                            cloud_cluster->width = cloud->points.size ();*/
 
                             sensor_msgs::PointCloud2 out;
                             geometry_msgs::Point32 pkt;
@@ -368,14 +375,14 @@ std::cerr << "after if"<< std::endl;
 
                             pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x)); //fixed with tf later?
 
-                            cloud->header = cloud_filtered->header;
-                            pcl::toROSMsg(*cloud, out);
+                           cloud_cluster->header = cloud_filtered->header;
+                            pcl::toROSMsg(*cloud_cluster, out);
 
 
                             //what to publish: bounding box : bb message,< publishes in the same msg. done
                             //centroid : geometry_msgs/Point.msg done    |
                             // and isObject : std_msgs/Bool.msg. --------|
-                            c_pub.publish(out);
+
                             //obj_loc_pub.publish(pkt);
                             point_array.polygon.points.push_back(pkt);
                         }
