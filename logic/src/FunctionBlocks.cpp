@@ -107,8 +107,8 @@ double FunctionBlocks::smoothUpdateVelocity(double current, double required, dou
 
 void FunctionBlocks::turn(double yaw) 
 {
-  ROS_INFO("Turn");
-  const int rate = 50;
+  ROS_INFO("Turn: %f\n", yaw);
+  const int rate = 10;
   ros::Rate loop_rate(rate);
   int timout = 5;
   int i = 0;
@@ -123,20 +123,31 @@ void FunctionBlocks::turn(double yaw)
   geometry_msgs::Pose initial = odomPose;
   
   double init_yaw = tf::getYaw(initial.orientation);
+  if (yaw ==0) 
+    return;
+  int gain = (yaw > 0)? 1 : -1;
 
   double diff = tf::getYaw(odomPose.orientation) - init_yaw;
   ROS_INFO("Difference turning%f\n", diff);
 
   do {
     ROS_INFO("Difference turning%f\n", diff);
-    diff = tf::getYaw(odomPose.orientation) - init_yaw;
-    twist.angular.z = /*fabs(diff) **/ a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+   
+    diff = fabs(tf::getYaw(odomPose.orientation) - init_yaw);
+    if (diff > M_PI) {
+      diff = fmod(diff, M_PI);
+    } else if (diff < -M_PI) {
+      diff = -1*fmod(fabs(diff),M_PI);
+    }
+ 
+    twist.angular.z = /*fabs(diff) **/ gain * a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
+    ROS_INFO("Publish:%f\n", twist.angular.z);
     twist_pub->publish(twist);
     ros::spinOnce();
     loop_rate.sleep();  
     i++;
-    } while ( (ros::ok()) && (i < (rate*timout)) 
-	      && (diff < yaw) );
+  } while ( (ros::ok()) /*&& (i < (rate*timout))*/
+	    && (fabs(diff) < fabs(yaw)) );
 
   ROS_INFO("End turn");
   twist.angular.z = 0;
