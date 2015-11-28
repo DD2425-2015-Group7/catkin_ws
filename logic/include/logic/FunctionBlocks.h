@@ -98,8 +98,9 @@ class FunctionBlocks
 	ros::Publisher *evidence_pub;
 	ros::Publisher *twist_pub;
 	ros::Publisher *goalPose_pub;
-
-        classification::ClassifiedObjectArray *objectsVision, *objectsMap;
+    
+        bool justStarted;
+        classification::ClassifiedObjectArray *objectsVision, *objectsMap, *objects2visit;
         
         bool updateMap(void);
         int getMapValue(nav_msgs::OccupancyGrid& m, double x, double y);

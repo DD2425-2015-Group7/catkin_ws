@@ -30,6 +30,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     
     objectsVision = new classification::ClassifiedObjectArray();
     objectsMap = new classification::ClassifiedObjectArray();
+    objects2visit = new classification::ClassifiedObjectArray();
+    justStarted = true;
     
     mapInflated = new nav_msgs::OccupancyGrid();
     map_client = new ros::ServiceClient();
@@ -353,6 +355,10 @@ bool FunctionBlocks::updateMap(void)
     if (map_client->call(srv2)){
         *mapInflated = srv2.response.map;
         *objectsMap = srv2.response.mappedObjects;
+        if(justStarted){
+            *objects2visit = *objectsMap;
+            justStarted = false;
+        }
         mapXsz = mapInflated->info.width * mapInflated->info.resolution;
         mapYsz = mapInflated->info.height * mapInflated->info.resolution;
     }else{
@@ -505,18 +511,21 @@ geometry_msgs::Pose FunctionBlocks::fetchNext(void)
     p.position.x = 0;
     p.position.y = 0;
     p.position.z = 2.0;
-    if(objectsMap->objects.size() < 1)
+    if(objects2visit->objects.size() < 1)
         return p;
-    p = objectsMap->objects[0].viewPose;
+    p = objects2visit->objects[0].viewPose;
     double minTime = time2goal(p);
     double t;
-    for(int i = 0; i < objectsMap->objects.size(); i++){
-        t = time2goal(objectsMap->objects[i].viewPose);
+    int chosen = 0;
+    for(int i = 0; i < objects2visit->objects.size(); i++){
+        t = time2goal(objects2visit->objects[i].viewPose);
         if(t < minTime){
             minTime = t;
-            p = objectsMap->objects[i].viewPose;
+            p = objects2visit->objects[i].viewPose;
+            chosen = i;
         }
     }
+    objects2visit->objects.erase(objects2visit->objects.begin()+chosen);
     return p;
 }
 
