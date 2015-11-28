@@ -231,15 +231,27 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 	objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
 	objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
 	//Average of the bounding box
-	objectsTable[current.name].bb.x0 = (1/2) * (objectsTable[current.name].bb.x0 + current.bb.x0);
-	objectsTable[current.name].bb.x1 = (1/2) * ( objectsTable[current.name].bb.x1 + current.bb.x1);
-	objectsTable[current.name].bb.y0 = (1/2) * (objectsTable[current.name].bb.y0 + current.bb.y0);
-	objectsTable[current.name].bb.y1 = (1/2) * (objectsTable[current.name].bb.y1 + current.bb.y1);
+	objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
+	objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
+	objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
+	objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
 	// The other attributes of tege ClassifiedObject can be taken from any object of the array
 
       }
     }
   }
+
+  for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
+    objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
+    objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
+    objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
+      
+    objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
+    objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
+    objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
+    objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
+  }
+  
 
   // We reset the Array
   objectsVision->objects.clear();
