@@ -1,9 +1,7 @@
 #include "vector"
 #include "ros/ros.h"
 #include <limits>
-
 #include "std_msgs/String.h"
-
 #include <tf/transform_listener.h>
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -30,7 +28,7 @@ double cell_size;
 
 double pathDistance = 0;
 
-#define G_OFFSET_4  1
+int G_OFFSET_4 = 1;
 
 nav_msgs::OccupancyGrid *map;
 geometry_msgs::PoseStamped startPose;
@@ -60,35 +58,18 @@ struct Node
     int h;
 
     int o; // O stands for the distance between the current point and the nearest obstacle
+    int t; // T stands for the turn cost. This value will be very high, if the node has to turn.
 
     int f; //heuristic, f = g + h + o
-    //struct Node* parent; //parent node, used for trace road
 };
 
 Node come_from[400][400];
-
-void setCurrentPosition(const geometry_msgs::Pose::ConstPtr& msg)
-{
-    startX = msg.get()->position.x;
-    startY = msg.get()->position.y;
-}
 
 void setGoalPosition(const geometry_msgs::Pose::ConstPtr& msg)
 {
     goalX = msg.get()->position.x;
     goalY = msg.get()->position.y;
 }
-
-void setMap(const nav_msgs::OccupancyGrid::ConstPtr& msg)
-{
-      //std::cout<< "Setting the map" <<std::endl;
-      map->data = msg.get()->data;
-      map->info = msg.get()->info;
-      map->header = msg.get()->header;
-
-      cell_size = msg.get()->info.resolution;
-}
-
 
 //if this nodeList has this value, then return "true"
 bool itHas(vector<Node> nodeList, Node node)
@@ -120,7 +101,7 @@ class PathFinder
 
     int hValue(Node current)
     {
-        int h = (goal.col - current.col) + (goal.row - current.row);
+        int h = abs(goal.col - current.col) + abs(goal.row - current.row);
 
         return h;
     }
@@ -128,22 +109,31 @@ class PathFinder
     int oValue(Node current)
     {
         // As for the toal f value, the smaller, the better, while the obstacle of distance should be the larger the better, so I reverse this value
-        int o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
+        //int o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
+        int o = - map->data[current.row*map->info.width + current.col];
+        //double o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
+        //std::cout<< "O value is  : "<< o << std::endl;
         return o;
     }
 
     Node getBestChild(vector<Node> nodelist)
     {
-        int bestValue = 999999;//std::numeric_limits<int>::max();
+        //std::cout<< "getBestChild size  : "<< nodelist.size() << std::endl;
+        int bestValue = 99999999;//std::numeric_limits<int>::max();
         int bestNum = 0;
         for(int i = 0; i < nodelist.size(); i++)
         {
+            //std::cout<< " F value : "<< nodelist.at(i).f << std::endl;
             if(nodelist.at(i).f < bestValue)
             {
                 bestValue = nodelist.at(i).f;
                 bestNum = i;
+                //std::cout<< "Best F value : "<< bestValue << std::endl;
+                //std::cout<< "Best Numb  : "<< bestNum << std::endl;
             }
         }
+        //std::cout << "Best Child : ( "<< nodelist.at(bestNum).row << " , "<<nodelist.at(bestNum).col <<" )" <<std::endl;
+        //std::cout << " ********   Best Child G value "<< nodelist.at(bestNum).g <<std::endl;
         return nodelist.at(bestNum);
     }
     //if this point is passable, then return TRUE, if it is occupied, return false
@@ -166,7 +156,7 @@ class PathFinder
         {
             return false;
         }
-        if(map->data[row*map->info.width + col] <= 15)
+        if(map->data[row*map->info.width + col] <= 15)//  15 is the one
         {
             return false;
         }
@@ -174,25 +164,6 @@ class PathFinder
         {
             return true;
         }
-
-
-        /*
-        assert(row >= 0);
-        assert(col >= 0);
-        assert(col < map->info.width);
-        assert(row < map->info.height);
-
-        if(map->data[row*map->info.width + col] > 15)
-        {
-            //System.err.println("Not available");
-            return true;
-        }
-        else
-        {
-            //System.err.println("Available");
-            return false;
-        }
-        */
     }
 
     vector<Node> getNeighbours(Node current)
@@ -201,15 +172,63 @@ class PathFinder
         int col = current.col;
 
         vector<Node> neighbours;
+
+        Node previousNode;
+        previousNode = come_from[current.row][current.col];
+        // "turnToUpDown" means this node want to move to UP or DOWN.
+        // If the previous two points move in horiztal direction, then this should be true
+        // And it this value is true, when this value want to turn up or down, this will return a very high cost
+        bool turnToUpDown;
+        bool turnToRightLeft;
+
+        //std::cout << "Current Row & Col is : "<< current.row <<" & "<<current.col<<std::endl;
+        //std::cout << "Previous Row & Col is : "<< previousNode.row <<" & "<<previousNode.col<<std::endl;
+        //First move
+        if(previousNode.row == start.row && previousNode.col == start.col)
+        {
+            turnToRightLeft = false;
+            turnToUpDown = false;
+        }
+        else
+        {
+            // Move in horiztal means only col changes
+            if(previousNode.col != current.col && previousNode.row == current.row)
+            {
+                //If it wants to move Up or Down, then return a very high cost
+                turnToUpDown = true;
+            }
+            else
+            {
+                turnToUpDown = false;
+            }
+
+            if(previousNode.col == current.col && previousNode.row != current.row)
+            {
+                //If it wants to move Right or Left, then return a very high cost
+                turnToRightLeft = true;
+            }
+            else
+            {
+                turnToRightLeft = false;
+            }
+        }
+        //std::cout << "turnToUpDown : "<< turnToUpDown<<std::endl;
+        //std::cout << "turnToRightLeft : "<< turnToRightLeft<<std::endl;
+
+
         //Up
         if(isCanMove(row+1,col))
-        {
+        {            
             //std::cout<<"Up"<<std::endl;
             Node newNode;
             newNode.row = row+1;
             newNode.col = col;
-            newNode.g = 999999999;//std::numeric_limits<int>::max();
-            //std::cout<<"Up"<<std::endl;
+            newNode.g = 99999;
+            newNode.t = 0;
+            if(turnToUpDown)
+            {
+                newNode.t = 10;
+            }
             neighbours.push_back(newNode);
         }
         //Down
@@ -218,8 +237,12 @@ class PathFinder
             Node newNode;
             newNode.row = row-1;
             newNode.col = col;
-            newNode.g = 999999999;//std::numeric_limits<int>::max();
-            //System.out.println("Down");
+            newNode.g = 99999;
+            newNode.t = 0;
+            if(turnToUpDown)
+            {
+                newNode.t = 10;
+            }
             neighbours.push_back(newNode);
         }
         //Right
@@ -228,8 +251,12 @@ class PathFinder
             Node newNode;
             newNode.row = row;
             newNode.col = col+1;
-            newNode.g = 999999999;//std::numeric_limits<int>::max();
-            //System.out.println("Right");
+            newNode.g = 99999;
+            newNode.t = 0;
+            if(turnToRightLeft)
+            {
+                newNode.t = 10;
+            }
             neighbours.push_back(newNode);
         }
         //Left
@@ -238,8 +265,12 @@ class PathFinder
             Node newNode;
             newNode.row = row;
             newNode.col = col-1;
-            newNode.g = 999999999;//std::numeric_limits<int>::max();
-            //System.out.println("Left");
+            newNode.g = 99999;
+            newNode.t = 0;
+            if(turnToRightLeft)
+            {
+                newNode.t = 10;
+            }
             neighbours.push_back(newNode);
         }
         return neighbours;
@@ -286,26 +317,28 @@ class PathFinder
             nav_msgs::Path nu;
             return nu;
         }
-        //ROS_INFO("Begin to find the path");
         vector<Node> closeSet;
         vector<Node> openSet;
         closeSet.clear();
         openSet.clear();
 
         start.g = 0;
+        //std::cout<< "start g : "<< start.g <<std::endl;
         start.h = hValue(start);
+        //std::cout<< "start h : "<< start.h <<std::endl;
         start.o = oValue(start);
+        //std::cout<< "start o : "<< start.o <<std::endl;
         start.f = start.g + start.h + start.o;
+        //std::cout<< "start f : "<< start.f <<std::endl;
         come_from[start.row][start.col] = start;
 
         openSet.push_back(start);
 
+        int count = 0;
+
         while(!openSet.empty())
         {
-            //std::cout << "openSet size is "<< openSet.size()<<std::endl;
             Node current = getBestChild(openSet);
-            //std::cout << "Current Point is: ( "<< current.row << " , "<<current.col <<" )" <<std::endl;
-            //std::cout << "Goal Point is: ( "<< goal.row << " , "<<goal.col <<" )" <<std::endl;
 
             if(current.row == goal.row && current.col == goal.col)
             {
@@ -319,41 +352,48 @@ class PathFinder
 
             closeSet.push_back(current);
 
-            //std::cout << "CloseSet size is "<< closeSet.size()<<std::endl;
-
             vector<Node> neighbours = getNeighbours(current);
+            //std::cout << "Neighbours size is "<< neighbours.size()  <<std::endl;
             for(int i = 0; i < neighbours.size(); i++)
             {
-                //std::cout << "Neighbours size is "<< neighbours.size()   <<std::endl;
-                //std::cout << "Neighbour Point is: ( "<< neighbours.at(i).row << " , "<<neighbours.at(i).col <<" )" <<std::endl;
-                //ROS_INFO("Get neighbours?");
                 Node child = neighbours.at(i);
-               // std::cout << "Child is: ( "<< child.row << " , "<<child.col <<" )" <<std::endl;
-
                 if(itHas(closeSet,child))
                 {
-                    //std::cout << "It has this child" <<std::endl;
                     continue;
                 }
-
 
                 int newG = current.g + G_OFFSET_4;
 
-                if (!itHas(openSet,child))
+                bool isBetter;
+                if(!itHas(openSet,child))
                 {
                     openSet.push_back(child);
+                    isBetter = true;
                 }
-                else if(newG >= child.g)
+                else if(newG < child.g)
                 {
-                    continue;
+                    isBetter = true;
+                }
+                else
+                {
+                    isBetter = false;
                 }
 
-                come_from[child.row][child.col] = current;
-                child.g = newG;
-                child.f = child.g + hValue(child) + oValue(child);
-               }
+                if(isBetter)
+                {
+                    come_from[child.row][child.col] = current;
+
+                    openSet.back().g = newG;
+                    //std::cout<< "newG value : "<< newG <<std::endl;
+                    openSet.back().h = hValue(child);
+                    //std::cout<< "Child H value : "<< child.h << std::endl;
+                    openSet.back().o = oValue(child);
+                    openSet.back().t = child.t;
+                    openSet.back().f = openSet.back().g + openSet.back().h + openSet.back().o + openSet.back().t;//
+                }
 
             }
+         }
         nav_msgs::Path nu;
         return nu;
         }
@@ -366,6 +406,7 @@ class PathFinder
         while(!(come_from[current.row][current.col].row == start.row && come_from[current.row][current.col].col == start.col))
         {
             //std::cout<< "Previous ROW is: "<< come_from[current.row][current.col].row << " and COL is: "<< come_from[current.row][current.col].col<<std::endl;
+            //std::cout<< "Previous G is: "<< come_from[current.row][current.col].g << " and H is: "<< come_from[current.row][current.col].h << " and O is: "<< come_from[current.row][current.col].o << " and T is: "<< come_from[current.row][current.col].t  << " and {F} is: "<< come_from[current.row][current.col].f<< std::endl;
             Node parent = come_from[current.row][current.col];
             path.push_back(parent);
             current = come_from[current.row][current.col];
@@ -376,6 +417,7 @@ class PathFinder
         for(int i = path.size() - 1; i > 0; i--)
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
+//          std::cout << "Path No."<< i << " Node G & H & O & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).o << " , "<<path.at(i).f <<" )" <<std::endl;
            geometry_msgs::PoseStamped p;
            //path.x should be the col value, right? TODO: check how the pub_points works. The coordinate must stay the same
            p.pose.position.x = path.at(i).col * cell_size;
@@ -403,12 +445,12 @@ class PathFinder
         finalPath.header.frame_id = "/map";
         std::cout<<"Original Path Size is: "<< finalPath.poses.size()<<std::endl;
         //Show the Original path
-        /*
+
         for(int i = 0; i < finalPath.poses.size(); i++)
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
         }
-        */
+
 
         return finalPath;
     }
@@ -535,15 +577,6 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
     finalPath.header.stamp = ros::Time::now();
     finalPath.header.frame_id = "/map";
     return finalPath;
-
-
-    /*
-    //newPath could be removed, I think
-    newPath.header.stamp = ros::Time::now();
-    newPath.header.frame_id = "/map";
-    return newPath;
-    */
-
 }
 
 nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
@@ -605,17 +638,15 @@ int main(int argc, char **argv)
     ros::NodeHandle handle;
 
     // function for calculate the Current Position: baselink (0.0) to the map frame (TF)
-
-    //ros::Subscriber path_sub_current = handle.subscribe<geometry_msgs::Pose>("/currentPosition",1000,setCurrentPosition);
     //ros::Subscriber path_sub_goal = handle.subscribe<geometry_msgs::Pose>("/goalPosition",1000,setGoalPosition);
 
     //Set map;
     map = new nav_msgs::OccupancyGrid();
     map->info.height = 0;
     map->info.width = 0;
-    //ros::Subscriber path_sub_map = handle.subscribe<nav_msgs::OccupancyGrid>("/map",5,setMap);
 
-    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
+    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Adstar/path",10);
+    ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Adstar/Simplepath",10);
 
 
     //Wait 8 s for the map service.
@@ -668,12 +699,12 @@ int main(int argc, char **argv)
     start.row = startPose.pose.position.y * 100;
     start.col = startPose.pose.position.x * 100;
     */
-    start.row = 20;//25;//92;//20;
-    start.col = 20;//195;//200;//38;//193;//20;
+    start.row = 20;//211;//138;//25;//92;//20;
+    start.col = 20;//195;//220;//195;//200;//38;//193;//20;
     // row & col : start -> 211,195  || goal : 73,186
-    //row:90, col:36 is the one we couldn't find the path
-    goal.row = 25;//216;//216;//211;//90;//73;//25;//20;//40;
-    goal.col = 50;//186;//104;//200;//36;//186;//200;//220;//20;
+
+    goal.row = 223;//73;//211;//145;//216;//216;//216;//211;//90;//73;//25;//20;//40;
+    goal.col = 140;//186;//195;//227;//220;//186;//104;//200;//36;//186;//200;//220;//20;
     PathFinder pf(start,goal);
 
     ros::Rate loop_rate(1);
@@ -697,7 +728,7 @@ int main(int argc, char **argv)
           {
              simpilifiedPath = simpilifyPath(path);
           }
-          //path_pub.publish(simpilifiedPath);
+           path_pub_simple.publish(simpilifiedPath);
           path_pub.publish(path);
         }
         ros::spinOnce();
