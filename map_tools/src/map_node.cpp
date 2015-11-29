@@ -35,17 +35,20 @@ bool addEllipse(map_tools::AddEllipse::Request  &req,
     return true;
 }
 
-void getObjectDims(classification::ClassifiedObject &co, double &a, double &b)
+void stackObject(classification::ClassifiedObject &co)
 {
-    //TODO: improve. Add also orientation.
     //TODO: draws a circle instead of an ellipse. Why?
-    if(co.name.compare("debris") == 0){
-        a = 0.06;
-        b = 0.15;
-    }else{
-        a = 0.02;
-        b = 0.02;
-    }
+    double a = 0.02;
+    double b = 0.02;
+    double x = co.p.x;
+    double y = co.p.y;
+    mso->stackEllipse(x, y, a, b, 0);
+}
+
+void stackDebris(classification::ClassifiedObject &co)
+{
+    double w = 0.1;
+    mso->stackLine(co.p.x, co.p.y, co.p2_debris.x, co.p2_debris.y, w);
 }
 
 bool inTolerance(double a, double b, double tol)
@@ -82,12 +85,13 @@ bool addObjects(map_tools::AddObjects::Request  &req,
         saveObject(req.array.objects[i]);
     }
     mso->clearEllipses();
+    mso->clearLines();
     for(int i = 0; i < clsObj->objects.size(); i++){
-        double x = clsObj->objects[i].p.x;
-        double y = clsObj->objects[i].p.y;
-        double a, b;
-        getObjectDims(clsObj->objects[i], a, b);
-        mso->stackEllipse(x, y, a, b, 0);
+        if(clsObj->objects[i].name.compare("debris") == 0){
+            stackDebris(clsObj->objects[i]);
+        }else{
+            stackObject(clsObj->objects[i]);
+        }
     }
     mso->renderGrid();
     return true;
@@ -213,7 +217,7 @@ int main(int argc, char **argv)
         if(counter < rate/mapRate){
             counter++;
         }else{
-            mso->getMap("inflated", map);
+            mso->getMap("inflated", map); 
             map.header.stamp = current_time;
             map_pub_obj.publish(map);
             counter = 0;

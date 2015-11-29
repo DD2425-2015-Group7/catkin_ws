@@ -15,6 +15,8 @@ class MapStorage{
         void stackWall(double x0, double y0, double x1, double y1, double thickness);
         void stackEllipse(double x, double y, double a, double b, double th);
         void clearEllipses(void);
+        void stackLine(double x0, double y0, double x1, double y1, double thickness);
+        void clearLines(void);
 
         void loadWalls(std::string fn, double thickness);
         void renderGrid(void);
@@ -43,7 +45,7 @@ class MapStorage{
             }
         };
         double cellSz, inflationRadius, xMax, yMax;
-        std::vector<Wall> wallSt;
+        std::vector<Wall> wallSt, lineSt;
         std::vector<Ellipse> ellipseSt;
         int fullyOccupied, minOccupied;
         cairo_surface_t *surface;

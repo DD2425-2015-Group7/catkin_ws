@@ -172,6 +172,24 @@ void MapStorage::stackWall(double x0, double y0, double x1, double y1, double th
     wallSt.push_back(MapStorage::Wall(x0,y0,x1,y1,thickness));
 }
 
+void MapStorage::stackLine(double x0, double y0, double x1, double y1, double thickness)
+{
+    if(x0 > xMax)
+        xMax = x0;
+    if(x1 > xMax)
+        xMax = x1;
+    if(y0 > yMax)
+        yMax = y0;
+    if(y1 > yMax)
+        yMax = y1;
+    lineSt.push_back(MapStorage::Wall(x0,y0,x1,y1,thickness));
+}
+
+void MapStorage::clearLines(void)
+{
+    lineSt.clear();
+}
+
 void MapStorage::stackEllipse(double x, double y, double a, double b, double th)
 {
     ellipseSt.push_back(MapStorage::Ellipse(x,y,a,b,th));
@@ -206,6 +224,8 @@ void MapStorage::renderGrid(void)
     
     for(int i = 0; i<wallSt.size(); i++)
         drawWall(wallSt[i].x0, wallSt[i].y0, wallSt[i].x1, wallSt[i].y1, wallSt[i].thickness);
+    for(int i = 0; i<lineSt.size(); i++)
+        drawWall(lineSt[i].x0, lineSt[i].y0, lineSt[i].x1, lineSt[i].y1, lineSt[i].thickness);
     for(int i = 0; i<ellipseSt.size(); i++)
         drawEllipse(ellipseSt[i].x, ellipseSt[i].y, ellipseSt[i].a, ellipseSt[i].b, ellipseSt[i].th);
     

@@ -160,6 +160,7 @@ void FunctionBlocks::turn(double yaw)
 
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
+  //TODO: process also point p2_debris for debris.
   ROS_INFO("Processing start");
   this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
@@ -275,9 +276,11 @@ void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 {
   ROS_INFO("Add2Map");
-  geometry_msgs::PointStamped p0, p1;
+  geometry_msgs::PointStamped p0, p1, p20, p21;
   p0.header.frame_id = objects.header.frame_id;
   p0.header.stamp = objects.header.stamp;
+  p20.header.frame_id = objects.header.frame_id;
+  p21.header.stamp = objects.header.stamp;
   
   try{
     tf_listener->waitForTransform(MapFrameName, p0.header.frame_id, p0.header.stamp, ros::Duration(1.0) );
@@ -289,13 +292,16 @@ void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
   objects.header.frame_id = MapFrameName;
   for(int i = 0; i < objects.objects.size(); i++){
     p0.point = objects.objects[i].p;
+    p20.point = objects.objects[i].p2_debris;
     try{
       tf_listener->transformPoint(MapFrameName, p0, p1);
+      tf_listener->transformPoint(MapFrameName, p20, p21);
     }catch(tf::TransformException &ex){
       ROS_ERROR("%s",ex.what());
       return;
     }
     objects.objects[i].p = p1.point;
+    objects.objects[i].p2_debris = p21.point;
     setViewPose(objects.objects[i]);
   }
     
@@ -308,7 +314,7 @@ void FunctionBlocks::testAdd2Map(void)
     classification::ClassifiedObjectArray objects;
     classification::ClassifiedObject obj;
     objects.header.frame_id = "cam_link";
-    objects.header.stamp = ros::Time::now();
+    objects.header.stamp = ros::Time(0);
     obj.name = "red_cube";
     obj.id = 1;
     obj.p.x = 0.4;
@@ -318,6 +324,8 @@ void FunctionBlocks::testAdd2Map(void)
     obj.id = 13;
     obj.p.x = 0.4;
     obj.p.y = 0.0;
+    obj.p2_debris.x = 0.65;
+    obj.p2_debris.y = 0.0;
     objects.objects.push_back(obj);
     this->add2map(objects);
 }
