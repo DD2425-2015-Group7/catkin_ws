@@ -185,7 +185,7 @@ int main(int argc, char *argv[])
             //t.angular.z = smoothUpdateVelocity(t.angular.z, -MAX_ANGULAR_VEL,0.025);
             std::cerr<< "Rotate to Right" <<std::endl;
 
-            t.angular.z = 3 * angle;
+            t.angular.z = 1.5 * angle;
 
             if(t.angular.z < -MAX_ANGULAR_VEL)
             {
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         case(ROTATE_LEFT):
             //t.angular.z = MAX_ANGULAR_VEL;
             //t.linear.x = smoothUpdateVelocity(t.linear.x,0,0.1);
-            t.angular.z = 3 * angle;
+            t.angular.z = 1.5 * angle;
 
             if(t.angular.z > MAX_ANGULAR_VEL)
             {
