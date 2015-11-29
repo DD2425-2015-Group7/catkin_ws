@@ -648,3 +648,17 @@ void FunctionBlocks::objects2localize(classification::ClassifiedObjectArray &)
 // {
 //     return -1;
 // }
+
+void FunctionBlocks::stopRobotAStar(void)
+{
+  geometry_msgs::Pose stop;
+  stop.position.x = -1.0;
+  stop.position.y = -1.0;
+  stop.position.z = -1.0;
+  stop.orientation.x = -1.0;
+  stop.orientation.y = -1.0;
+  stop.orientation.z = -1.0;
+  stop.orientation.w = -1.0;
+  
+  goalPose_pub->publish(stop);
+}

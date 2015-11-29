@@ -70,11 +70,13 @@ void explore(void)
       goalSet = false;
     }
     if(fb->objectDetected()){
+      fb->stopRobotAStar();
       objectArray = fb->processObject();
       fb->add2map(objectArray);
       fb->sendEvidence(objectArray);
     }
     if(!fb->isLocalized()){
+      fb->stopRobotAStar();
       localize();
     }
     ros::spinOnce();
@@ -152,11 +154,13 @@ void fetch(void)
       goalSet = false;
     }
     if(fb->objectDetected()){
+      fb->stopRobotAStar();
       objectArray = fb->processObject();
       fb->add2map(objectArray);
       fetchAndReport(objectArray);
     }
     if(!fb->isLocalized()){
+      fb->stopRobotAStar();
       localize();
     }
     ros::spinOnce();

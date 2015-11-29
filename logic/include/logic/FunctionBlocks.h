@@ -55,7 +55,8 @@ class FunctionBlocks
         void go2goal(geometry_msgs::Pose&);
         void turn(double yaw);
         void setWallFollower(bool on);
-        
+	void stopRobotAStar(void);
+
         //Decisions.
         bool isPointFree(double x, double y);
         geometry_msgs::Pose randUniform(void);
