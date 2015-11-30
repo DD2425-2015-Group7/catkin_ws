@@ -18,21 +18,7 @@ ros::ServiceClient *map_client;
 
 using std::vector;
 
-double startX;
-double startY;
-
-double goalX;
-double goalY;
-
-int StartRow;
-int StartCol;
-int GoalRow;
-int GoalCol;
-
-
 double cell_size;
-
-double pathDistance = 0;
 
 int turnningCost = 100;
 
@@ -78,13 +64,6 @@ struct Node
     }
 };
 
-//Node come_from[400][400];
-
-void setGoalPosition(const geometry_msgs::Pose::ConstPtr& msg)
-{
-    goalX = msg.get()->position.x;
-    goalY = msg.get()->position.y;
-}
 
 
 class PathFinder
@@ -592,16 +571,13 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
 }
 
 
-/*
+
 nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 {
     //The Pose msg is in meters, so multiply this by 100
     int goalCol = msg.position.y / cell_size;
     int goalRow = msg.position.x / cell_size;
-    //TODO - TF function to get the start point;
-    Node start;
-//    start.row = 20;
-//    start.col = 20;
+
     std::string TargetFrameName = "/map";
     std::string CurrentFrame = "/base_link";
 
@@ -628,12 +604,12 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
       return nu;
       ros::Duration(1.0).sleep();
     }
-    start.row = startPose.pose.position.y / cell_size;
-    start.col = startPose.pose.position.x / cell_size;
+    int startRow = startPose.pose.position.y / cell_size;
+    int startCol = startPose.pose.position.x / cell_size;
 
-    Node goal;
-    goal.row = goalRow;
-    goal.col = goalCol;
+    Node start(startRow,startCol,-1);
+    Node goal(goalRow,goalCol,-1);
+
     PathFinder pf(start,goal);
     nav_msgs::Path originalPath = pf.getPath();
     nav_msgs::Path simplePath = simpilifyPath(originalPath);
@@ -647,7 +623,7 @@ bool GetPath(path_planning::GetPath::Request  &req, path_planning::GetPath::Resp
     res.path = servicePath(req.goal);
     return true;
 }
-*/
+
 
 int main(int argc, char **argv)
 {
@@ -676,44 +652,11 @@ int main(int argc, char **argv)
     map_client = new ros::ServiceClient();
     *map_client = handle.serviceClient<map_tools::GetMap>("/map_node/get_map");
     updateMap();
-    //ros::ServiceServer path_srv = handle.advertiseService("/Astar/pathTest", GetPath);
 
-//    start.row = startX;
-//    start.col = startY;
-//    goal.row = goalX;
-//    goal.col = goalY;
 
-    //row stands for the y-coordinate; col stands for the x value;
+    ros::ServiceServer path_srv = handle.advertiseService("/Astar/pathTest", GetPath);
+
     /*
-    //TF package to set the start point
-    std::string TargetFrameName = "/map";
-    std::string CurrentFrame = "/base_link";
-
-    geometry_msgs::PoseStamped p;
-    p.header.frame_id = CurrentFrame;
-    p.header.stamp = ros::Time(0);
-    p.pose.position.x = 0.0;
-    p.pose.position.y = 0.0;
-    p.pose.position.z = 0.0;
-    p.pose.orientation.x = 0.0;
-    p.pose.orientation.y = 0.0;
-    p.pose.orientation.y = 0.0;
-    p.pose.orientation.z = 1.0;
-
-    try
-    {
-        tf_listener->waitForTransform(TargetFrameName, CurrentFrame, ros::Time(0), ros::Duration(1.0) );
-        tf_listener->transformPose(TargetFrameName,p,startPose);
-    }
-    catch(tf::TransformException &ex)
-    {
-      ROS_ERROR("%s",ex.what());
-      return -1;
-      ros::Duration(1.0).sleep();
-    }
-    start.row = startPose.pose.position.y * 100;
-    start.col = startPose.pose.position.x * 100;
-    */
     int StartRow = 23;//211;//138;//25;//92;//20;
     int StartCol = 205;//195;//220;//195;//200;//38;//193;//20;
     // row & col : start -> 211,195  || goal : 73,186
@@ -733,17 +676,20 @@ int main(int argc, char **argv)
     
     start = goal3;
     goal = start2;
+    */
 
-    PathFinder pf(start,goal);
 
-    ros::Rate loop_rate(1);
+    //PathFinder pf(start,goal);
+
+    ros::Rate loop_rate(2);
 
     nav_msgs::Path path;
     nav_msgs::Path simpilifiedPath;
-	while (ros::ok())
-	{
+    while (ros::ok())
+    {
         updateMap();
-
+        
+        /*
         if(map->data.size() < 1000)
         {
             ROS_INFO("Map is not yet intialized");
@@ -760,9 +706,10 @@ int main(int argc, char **argv)
            path_pub_simple.publish(simpilifiedPath);
           path_pub.publish(path);
         }
+        * */
         ros::spinOnce();
-		loop_rate.sleep();
-	}
+        loop_rate.sleep();
+    }
 
-	return 0;
+    return 0;
 }
