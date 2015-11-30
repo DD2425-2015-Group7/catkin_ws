@@ -24,9 +24,17 @@ double startY;
 double goalX;
 double goalY;
 
+int StartRow;
+int StartCol;
+int GoalRow;
+int GoalCol;
+
+
 double cell_size;
 
 double pathDistance = 0;
+
+int turnningCost = 10000;
 
 int G_OFFSET_4 = 1;
 
@@ -53,6 +61,7 @@ struct Node
 {
     int row;
     int col;
+    int parent;
 
     int g; //past road cost
     int h;
@@ -61,9 +70,15 @@ struct Node
     int t; // T stands for the turn cost. This value will be very high, if the node has to turn.
 
     int f; //heuristic, f = g + h + o
+
+    Node(int row, int col, int parent){
+        this->parent = parent;
+        this->row = row;
+        this->col = col;
+    }
 };
 
-Node come_from[400][400];
+//Node come_from[400][400];
 
 void setGoalPosition(const geometry_msgs::Pose::ConstPtr& msg)
 {
@@ -88,20 +103,21 @@ bool itHas(vector<Node> nodeList, Node node)
 
 class PathFinder
 {
-    Node start;
-    Node goal;
+    Node *start;
+    Node *goal;
+    vector<Node> closeSet;
 
     public:
     PathFinder(Node node1, Node node2)
     {
-        start = node1;
-        goal = node2;
+        start = new Node(node1.row,node1.col,node1.parent);
+        goal = new Node(node2.row,node2.col,node2.parent);
         //ROS_INFO("PathFinder Intialized");
     }
 
     int hValue(Node current)
     {
-        int h = abs(goal.col - current.col) + abs(goal.row - current.row);
+        int h = abs(goal->col - current.col) + abs(goal->row - current.row);
 
         return h;
     }
@@ -109,8 +125,10 @@ class PathFinder
     int oValue(Node current)
     {
         // As for the toal f value, the smaller, the better, while the obstacle of distance should be the larger the better, so I reverse this value
-        //int o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
-        int o = - map->data[current.row*map->info.width + current.col];
+        int o = (50 - (map->data[current.row*map->info.width + current.col]));
+        assert(o >= 0);
+        assert(o <= 50);
+        //int o = - map->data[current.row*map->info.width + current.col];
         //double o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
         //std::cout<< "O value is  : "<< o << std::endl;
         return o;
@@ -119,7 +137,8 @@ class PathFinder
     Node getBestChild(vector<Node> nodelist)
     {
         //std::cout<< "getBestChild size  : "<< nodelist.size() << std::endl;
-        int bestValue = 99999999;//std::numeric_limits<int>::max();
+        assert(nodelist.size()>0);
+        int bestValue = nodelist[0].f;
         int bestNum = 0;
         for(int i = 0; i < nodelist.size(); i++)
         {
@@ -149,7 +168,6 @@ class PathFinder
         }
         if(col < 0)
         {
-            //ROS_INFO("col < 0");
             return false;
         }
         if(col >= map->info.width)
@@ -166,33 +184,25 @@ class PathFinder
         }
     }
 
-    vector<Node> getNeighbours(Node current)
+    vector<Node> getNeighbours(Node &current, int index)
     {
         int row = current.row;
         int col = current.col;
 
         vector<Node> neighbours;
 
-        Node previousNode;
-        previousNode = come_from[current.row][current.col];
+        Node *previousNode;
         // "turnToUpDown" means this node want to move to UP or DOWN.
         // If the previous two points move in horiztal direction, then this should be true
         // And it this value is true, when this value want to turn up or down, this will return a very high cost
         bool turnToUpDown;
         bool turnToRightLeft;
 
-        //std::cout << "Current Row & Col is : "<< current.row <<" & "<<current.col<<std::endl;
-        //std::cout << "Previous Row & Col is : "<< previousNode.row <<" & "<<previousNode.col<<std::endl;
-        //First move
-        if(previousNode.row == start.row && previousNode.col == start.col)
+        if(current.parent >= 0)
         {
-            turnToRightLeft = false;
-            turnToUpDown = false;
-        }
-        else
-        {
+            previousNode = &(closeSet.at(current.parent)); //come_from[current.row][current.col];
             // Move in horiztal means only col changes
-            if(previousNode.col != current.col && previousNode.row == current.row)
+            if(previousNode->col != current.col && previousNode->row == current.row)
             {
                 //If it wants to move Up or Down, then return a very high cost
                 turnToUpDown = true;
@@ -202,7 +212,7 @@ class PathFinder
                 turnToUpDown = false;
             }
 
-            if(previousNode.col == current.col && previousNode.row != current.row)
+            if(previousNode->col == current.col && previousNode->row != current.row)
             {
                 //If it wants to move Right or Left, then return a very high cost
                 turnToRightLeft = true;
@@ -212,66 +222,66 @@ class PathFinder
                 turnToRightLeft = false;
             }
         }
+        else
+        {
+            //The start point.
+            turnToRightLeft = false;
+            turnToUpDown = false;
+        }
+
+
+        //std::cout << "Current Row & Col is : "<< current.row <<" & "<<current.col<<std::endl;
+        //std::cout << "Previous Row & Col is : "<< previousNode.row <<" & "<<previousNode.col<<std::endl;
+
         //std::cout << "turnToUpDown : "<< turnToUpDown<<std::endl;
         //std::cout << "turnToRightLeft : "<< turnToRightLeft<<std::endl;
 
 
+        Node *newNode;
         //Up
         if(isCanMove(row+1,col))
         {            
             //std::cout<<"Up"<<std::endl;
-            Node newNode;
-            newNode.row = row+1;
-            newNode.col = col;
-            newNode.g = 99999;
-            newNode.t = 0;
+            newNode = new Node(row+1, col, index);
+            newNode->t = current.t;
             if(turnToUpDown)
             {
-                newNode.t = 10;
+                newNode->t += turnningCost;
             }
-            neighbours.push_back(newNode);
+            neighbours.push_back(*newNode);
         }
         //Down
         if(isCanMove(row-1,col))
         {
-            Node newNode;
-            newNode.row = row-1;
-            newNode.col = col;
-            newNode.g = 99999;
-            newNode.t = 0;
+            newNode = new Node(row-1, col, index);
+            newNode->t = current.t;
             if(turnToUpDown)
             {
-                newNode.t = 10;
+                newNode->t += turnningCost;
             }
-            neighbours.push_back(newNode);
+            neighbours.push_back(*newNode);
         }
         //Right
         if(isCanMove(row,col+1))
         {
-            Node newNode;
-            newNode.row = row;
-            newNode.col = col+1;
-            newNode.g = 99999;
-            newNode.t = 0;
+            newNode = new Node(row, col + 1, index);
+            newNode->t = current.t;
             if(turnToRightLeft)
             {
-                newNode.t = 10;
+                newNode->t += turnningCost;
             }
-            neighbours.push_back(newNode);
+            neighbours.push_back(*newNode);
         }
         //Left
         if(isCanMove(row,col-1))
         {
-            Node newNode;
-            newNode.row = row;
-            newNode.col = col-1;
-            newNode.g = 99999;
-            newNode.t = 0;
+            newNode = new Node(row, col - 1, index);
+            newNode->t = current.t;
             if(turnToRightLeft)
             {
-                newNode.t = 10;
+                newNode->t += turnningCost;
             }
-            neighbours.push_back(newNode);
+            neighbours.push_back(*newNode);
         }
         return neighbours;
     }
@@ -311,52 +321,51 @@ class PathFinder
     nav_msgs::Path getPath()
     {
         //if this two point is invalid, then break
-        if(inValid(start,goal))
+        if(inValid(*start,*goal))
         {
             ROS_INFO("Start or Goal is not valid");
             nav_msgs::Path nu;
             return nu;
         }
-        vector<Node> closeSet;
         vector<Node> openSet;
         closeSet.clear();
         openSet.clear();
 
-        start.g = 0;
+        start->g = 0;
         //std::cout<< "start g : "<< start.g <<std::endl;
-        start.h = hValue(start);
+        start->h = hValue(*start);
         //std::cout<< "start h : "<< start.h <<std::endl;
-        start.o = oValue(start);
+        start->o = oValue(*start);
         //std::cout<< "start o : "<< start.o <<std::endl;
-        start.f = start.g + start.h + start.o;
+        start->t = 0;
+        start->f = start->g + start->t;// + start->o;// + start->h;
         //std::cout<< "start f : "<< start.f <<std::endl;
-        come_from[start.row][start.col] = start;
+        //come_from[start.row][start.col] = start;
 
-        openSet.push_back(start);
-
-        int count = 0;
+        openSet.push_back(*start);
 
         while(!openSet.empty())
         {
             Node current = getBestChild(openSet);
-
-            if(current.row == goal.row && current.col == goal.col)
+            //std::cout << "Path No."<< i << " Node G & H & T & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).f <<" )" <<std::endl;
+            if(current.row == goal->row && current.col == goal->col)
             {
                 ROS_INFO("Astar Destinaltion reached");
                 return reconstruct(current);
             }
 
+            closeSet.push_back(current);
+
             //The following two lines are used to delete one certain element
             int position = getPosition(openSet,current);
             openSet.erase(openSet.begin() + position);
-
-            closeSet.push_back(current);
-
-            vector<Node> neighbours = getNeighbours(current);
+            assert(closeSet.size() > 0);
+            vector<Node> neighbours = getNeighbours(closeSet.back(),closeSet.size() -1 );
             //std::cout << "Neighbours size is "<< neighbours.size()  <<std::endl;
             for(int i = 0; i < neighbours.size(); i++)
             {
                 Node child = neighbours.at(i);
+                //std::cout << "Child's Parent Point Position is : ( "<< child.parent->row << " , "<< child.parent->col << " )"<<std::endl;
                 if(itHas(closeSet,child))
                 {
                     continue;
@@ -370,10 +379,6 @@ class PathFinder
                     openSet.push_back(child);
                     isBetter = true;
                 }
-                else if(newG < child.g)
-                {
-                    isBetter = true;
-                }
                 else
                 {
                     isBetter = false;
@@ -381,43 +386,41 @@ class PathFinder
 
                 if(isBetter)
                 {
-                    come_from[child.row][child.col] = current;
-
+                    //come_from[child.row][child.col] = current;
                     openSet.back().g = newG;
                     //std::cout<< "newG value : "<< newG <<std::endl;
                     openSet.back().h = hValue(child);
                     //std::cout<< "Child H value : "<< child.h << std::endl;
-                    openSet.back().o = oValue(child);
+                    openSet.back().o = current.o + oValue(child);
                     openSet.back().t = child.t;
-                    openSet.back().f = openSet.back().g + openSet.back().h + openSet.back().o + openSet.back().t;//
-                }
+                    openSet.back().f = openSet.back().g + openSet.back().t;//+ openSet.back().o;// + openSet.back().h;// +                 }
 
-            }
+                }
          }
         nav_msgs::Path nu;
         return nu;
         }
-
+    }
     nav_msgs::Path reconstruct(Node current)
     {
         vector<Node> path;
         nav_msgs::Path finalPath;
 
-        while(!(come_from[current.row][current.col].row == start.row && come_from[current.row][current.col].col == start.col))
+        //path.push_back(current);
+        std::cout<<"Reconstruct Starts "<<std::endl;
+        while(current.parent >= 0 )
         {
-            //std::cout<< "Previous ROW is: "<< come_from[current.row][current.col].row << " and COL is: "<< come_from[current.row][current.col].col<<std::endl;
-            //std::cout<< "Previous G is: "<< come_from[current.row][current.col].g << " and H is: "<< come_from[current.row][current.col].h << " and O is: "<< come_from[current.row][current.col].o << " and T is: "<< come_from[current.row][current.col].t  << " and {F} is: "<< come_from[current.row][current.col].f<< std::endl;
-            Node parent = come_from[current.row][current.col];
-            path.push_back(parent);
-            current = come_from[current.row][current.col];
+            path.push_back(closeSet.at(current.parent));
+            current = closeSet.at(current.parent);
+            //std::cout << "Parent's Point Positionv is : ( "<< current.row << " , "<< current.col << " )"<<std::endl;
         }
-
+        std::cout<<"Reconstruct Ends "<<std::endl;
 
         // Should this be just larger than 0 or it could equal 0
         for(int i = path.size() - 1; i > 0; i--)
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
-//          std::cout << "Path No."<< i << " Node G & H & O & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).o << " , "<<path.at(i).f <<" )" <<std::endl;
+           std::cout << "Path No."<< i << " Node G & H & T & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).f <<" )" <<std::endl;
            geometry_msgs::PoseStamped p;
            //path.x should be the col value, right? TODO: check how the pub_points works. The coordinate must stay the same
            p.pose.position.x = path.at(i).col * cell_size;
@@ -432,8 +435,8 @@ class PathFinder
 
         //Add the goal point in the path. For some reason, the path will miss the two points(one is the goal and one the one before the goal), this could be a TODO;
         geometry_msgs::PoseStamped p;
-        p.pose.position.x = goal.col * cell_size;
-        p.pose.position.y = goal.row * cell_size;
+        p.pose.position.x = goal->col * cell_size;
+        p.pose.position.y = goal->row * cell_size;
         p.pose.orientation.x = 0;
         p.pose.orientation.y = 0;
         p.pose.orientation.z = 0;
@@ -579,6 +582,8 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
     return finalPath;
 }
 
+
+/*
 nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 {
     //The Pose msg is in meters, so multiply this by 100
@@ -626,11 +631,14 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
     return simplePath;
 }
 
+
+
 bool GetPath(path_planning::GetPath::Request  &req, path_planning::GetPath::Response &res)
 {
     res.path = servicePath(req.goal);
     return true;
 }
+*/
 
 int main(int argc, char **argv)
 {
@@ -645,8 +653,8 @@ int main(int argc, char **argv)
     map->info.height = 0;
     map->info.width = 0;
 
-    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Adstar/path",10);
-    ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Adstar/Simplepath",10);
+    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
+    ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Astar/Simplepath",10);
 
 
     //Wait 8 s for the map service.
@@ -659,9 +667,7 @@ int main(int argc, char **argv)
     map_client = new ros::ServiceClient();
     *map_client = handle.serviceClient<map_tools::GetMap>("/map_node/get_map");
     updateMap();
-    ros::ServiceServer path_srv = handle.advertiseService("/Astar/pathTest", GetPath);
-    Node start;
-    Node goal;
+    //ros::ServiceServer path_srv = handle.advertiseService("/Astar/pathTest", GetPath);
 
 //    start.row = startX;
 //    start.col = startY;
@@ -699,12 +705,16 @@ int main(int argc, char **argv)
     start.row = startPose.pose.position.y * 100;
     start.col = startPose.pose.position.x * 100;
     */
-    start.row = 20;//211;//138;//25;//92;//20;
-    start.col = 20;//195;//220;//195;//200;//38;//193;//20;
+    int StartRow = 23;//211;//138;//25;//92;//20;
+    int StartCol = 205;//195;//220;//195;//200;//38;//193;//20;
     // row & col : start -> 211,195  || goal : 73,186
 
-    goal.row = 223;//73;//211;//145;//216;//216;//216;//211;//90;//73;//25;//20;//40;
-    goal.col = 140;//186;//195;//227;//220;//186;//104;//200;//36;//186;//200;//220;//20;
+    int GoalRow = 70;//73;//211;//145;//216;//216;//216;//211;//90;//73;//25;//20;//40;
+    int GoalCol = 205;//186;//195;//227;//220;//186;//104;//200;//36;//186;//200;//220;//20;
+
+    Node start(StartRow, StartCol, -1);
+    Node goal(GoalRow,GoalCol, -1);
+
     PathFinder pf(start,goal);
 
     ros::Rate loop_rate(1);
