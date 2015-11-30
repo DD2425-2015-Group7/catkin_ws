@@ -34,7 +34,7 @@ double cell_size;
 
 double pathDistance = 0;
 
-int turnningCost = 10000;
+int turnningCost = 100;
 
 int G_OFFSET_4 = 1;
 
@@ -86,20 +86,6 @@ void setGoalPosition(const geometry_msgs::Pose::ConstPtr& msg)
     goalY = msg.get()->position.y;
 }
 
-//if this nodeList has this value, then return "true"
-bool itHas(vector<Node> nodeList, Node node)
-{
-    bool ithas = false;
-    for(int i = 0; i < nodeList.size(); i++)
-    {
-        if(node.row == nodeList.at(i).row && node.col == nodeList.at(i).col)
-        {
-            ithas = true;
-            break;
-        }
-    }
-    return ithas;
-}
 
 class PathFinder
 {
@@ -128,13 +114,14 @@ class PathFinder
         int o = (50 - (map->data[current.row*map->info.width + current.col]));
         assert(o >= 0);
         assert(o <= 50);
+        o = o * 10;
         //int o = - map->data[current.row*map->info.width + current.col];
         //double o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
         //std::cout<< "O value is  : "<< o << std::endl;
         return o;
     }
 
-    Node getBestChild(vector<Node> nodelist)
+    int getBestChild(vector<Node> nodelist)
     {
         //std::cout<< "getBestChild size  : "<< nodelist.size() << std::endl;
         assert(nodelist.size()>0);
@@ -153,7 +140,7 @@ class PathFinder
         }
         //std::cout << "Best Child : ( "<< nodelist.at(bestNum).row << " , "<<nodelist.at(bestNum).col <<" )" <<std::endl;
         //std::cout << " ********   Best Child G value "<< nodelist.at(bestNum).g <<std::endl;
-        return nodelist.at(bestNum);
+        return bestNum;
     }
     //if this point is passable, then return TRUE, if it is occupied, return false
     bool isCanMove(int row,int col)
@@ -286,18 +273,29 @@ class PathFinder
         return neighbours;
     }
 
-    int getPosition(vector<Node> nodeList, Node node)
+    //if this nodeList has this value, then return "true"
+    bool itHas(vector<Node> nodeList, Node node)
     {
-        int position;
         for(int i = 0; i < nodeList.size(); i++)
         {
-            if(node.row = nodeList.at(i).row && node.col == nodeList.at(i).col)
+            if(node.row == nodeList.at(i).row && node.col == nodeList.at(i).col)
             {
-                position = i;
-                break;
+                return true;
             }
         }
-        return position;
+        return false;
+    }
+
+    int getPosition(vector<Node> nodeList, Node node)
+    {
+        for(int i = 0; i < nodeList.size(); i++)
+        {
+            if(node.row == nodeList.at(i).row && node.col == nodeList.at(i).col)
+            {
+                return i;
+            }
+        }
+        return -10;
     }
 
     //if the position of start or goal is invalid, then we return TRUE
@@ -338,7 +336,7 @@ class PathFinder
         start->o = oValue(*start);
         //std::cout<< "start o : "<< start.o <<std::endl;
         start->t = 0;
-        start->f = start->g + start->t;// + start->o;// + start->h;
+        start->f = start->g + start->o + start->h + start->t;// start.t + start->h;
         //std::cout<< "start f : "<< start.f <<std::endl;
         //come_from[start.row][start.col] = start;
 
@@ -346,7 +344,9 @@ class PathFinder
 
         while(!openSet.empty())
         {
-            Node current = getBestChild(openSet);
+            int curIdx = getBestChild(openSet);
+            //std::cout << "curIdx "<< curIdx <<std::endl;
+            Node current = openSet[curIdx];
             //std::cout << "Path No."<< i << " Node G & H & T & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).f <<" )" <<std::endl;
             if(current.row == goal->row && current.col == goal->col)
             {
@@ -356,9 +356,8 @@ class PathFinder
 
             closeSet.push_back(current);
 
-            //The following two lines are used to delete one certain element
-            int position = getPosition(openSet,current);
-            openSet.erase(openSet.begin() + position);
+            openSet.erase(openSet.begin() + curIdx);
+            
             assert(closeSet.size() > 0);
             vector<Node> neighbours = getNeighbours(closeSet.back(),closeSet.size() -1 );
             //std::cout << "Neighbours size is "<< neighbours.size()  <<std::endl;
@@ -371,35 +370,27 @@ class PathFinder
                     continue;
                 }
 
-                int newG = current.g + G_OFFSET_4;
+                child.g = current.g + G_OFFSET_4;
+                child.h = hValue(child);
+                child.o = current.o + oValue(child);
+                child.f = child.g + child.t + child.o + child.h;
 
-                bool isBetter;
-                if(!itHas(openSet,child))
+                int idx = getPosition(openSet,child);
+                //Not in openSet.
+                if(idx<0)
                 {
                     openSet.push_back(child);
-                    isBetter = true;
                 }
-                else
+                else if(child.f < openSet[idx].f)
                 {
-                    isBetter = false;
+                    openSet[idx]=child;
                 }
-
-                if(isBetter)
-                {
-                    //come_from[child.row][child.col] = current;
-                    openSet.back().g = newG;
-                    //std::cout<< "newG value : "<< newG <<std::endl;
-                    openSet.back().h = hValue(child);
-                    //std::cout<< "Child H value : "<< child.h << std::endl;
-                    openSet.back().o = current.o + oValue(child);
-                    openSet.back().t = child.t;
-                    openSet.back().f = openSet.back().g + openSet.back().t;//+ openSet.back().o;// + openSet.back().h;// +                 }
-
-                }
+                
          }
+     }
         nav_msgs::Path nu;
         return nu;
-        }
+        
     }
     nav_msgs::Path reconstruct(Node current)
     {
@@ -420,7 +411,7 @@ class PathFinder
         for(int i = path.size() - 1; i > 0; i--)
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
-           std::cout << "Path No."<< i << " Node G & H & T & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).f <<" )" <<std::endl;
+           std::cout << "Path No."<< i << " Node G & H & T & O & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).o << " , "<<path.at(i).f <<" )" <<std::endl;
            geometry_msgs::PoseStamped p;
            //path.x should be the col value, right? TODO: check how the pub_points works. The coordinate must stay the same
            p.pose.position.x = path.at(i).col * cell_size;
@@ -711,9 +702,18 @@ int main(int argc, char **argv)
 
     int GoalRow = 70;//73;//211;//145;//216;//216;//216;//211;//90;//73;//25;//20;//40;
     int GoalCol = 205;//186;//195;//227;//220;//186;//104;//200;//36;//186;//200;//220;//20;
+    
+    Node start1(23, 205, -1);
+    Node goal1(70, 205, -1);
+    Node start2(20, 20, -1);
+    Node goal2(25, 25, -1);
+    Node goal3(70, 50, -1);
 
     Node start(StartRow, StartCol, -1);
     Node goal(GoalRow,GoalCol, -1);
+    
+    start = goal3;
+    goal = start2;
 
     PathFinder pf(start,goal);
 
