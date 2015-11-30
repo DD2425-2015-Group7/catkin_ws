@@ -45,7 +45,7 @@ tf::TransformListener *tf_listener;
 bool updateMap(void)
 {
     map_tools::GetMap srv2;
-    srv2.request.type.data = "distance";
+    srv2.request.type.data = "distance_obj";
     if (map_client->call(srv2)){
         *map = srv2.response.map;
         cell_size = map->info.resolution;
@@ -347,6 +347,18 @@ class PathFinder
             int curIdx = getBestChild(openSet);
             //std::cout << "curIdx "<< curIdx <<std::endl;
             Node current = openSet[curIdx];
+            /*
+            if(current.row == 99 && current.col == 66){
+                std::cout << "point 1" << std::endl;
+                std::cout << "point 1." << " Node G & H & T & O & F: ( "<< current.g << " , "<<current.h << " , "<<current.t << " , "<<current.o << " , "<<current.f <<" )" <<std::endl;
+                
+            }
+            if(current.row == 100 && current.col == 65){
+                std::cout << "point 2" << std::endl;
+                std::cout << "point 2." << " Node G & H & T & O & F: ( "<< current.g << " , "<<current.h << " , "<<current.t << " , "<<current.o << " , "<<current.f <<" )" <<std::endl;
+                
+            }
+            * */
             //std::cout << "Path No."<< i << " Node G & H & T & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).f <<" )" <<std::endl;
             if(current.row == goal->row && current.col == goal->col)
             {
@@ -365,17 +377,23 @@ class PathFinder
             {
                 Node child = neighbours.at(i);
                 //std::cout << "Child's Parent Point Position is : ( "<< child.parent->row << " , "<< child.parent->col << " )"<<std::endl;
-                if(itHas(closeSet,child))
-                {
-                    continue;
-                }
-
                 child.g = current.g + G_OFFSET_4;
                 child.h = hValue(child);
                 child.o = current.o + oValue(child);
                 child.f = child.g + child.t + child.o + child.h;
+                
+                int idx = getPosition(closeSet,child);
+                if(idx>=0)
+                {
+                    //We have explored the same node with a better cost.
+                    if(child.f < closeSet[idx].f){
+                        closeSet.erase(closeSet.begin() + idx);
+                    }else{
+                        continue;
+                    }
+                }
 
-                int idx = getPosition(openSet,child);
+                idx = getPosition(openSet,child);
                 //Not in openSet.
                 if(idx<0)
                 {
@@ -708,6 +726,7 @@ int main(int argc, char **argv)
     Node start2(20, 20, -1);
     Node goal2(25, 25, -1);
     Node goal3(70, 50, -1);
+    Node goal4(70, 110, -1);
 
     Node start(StartRow, StartCol, -1);
     Node goal(GoalRow,GoalCol, -1);
