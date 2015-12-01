@@ -22,7 +22,7 @@ using std::vector;
 
 double cell_size;
 
-int turnningCost = 100;
+int turnningCost = 300;
 
 int G_OFFSET_4 = 1;
 
@@ -238,52 +238,49 @@ class PathFinder
         //std::cout << "turnToUpDown : "<< turnToUpDown<<std::endl;
         //std::cout << "turnToRightLeft : "<< turnToRightLeft<<std::endl;
 
-
-        Node *newNode;
         //Up
         if(isCanMove(row+1,col))
         {            
-            //std::cout<<"Up"<<std::endl;
-            newNode = new Node(row+1, col, index);
-            newNode->t = current.t;
+            Node newNode(row+1, col, index);
+            newNode.t = current.t;
             if(turnToUpDown)
             {
-                newNode->t += turnningCost;
+                newNode.t += turnningCost;
             }
-            neighbours.push_back(*newNode);
+            neighbours.push_back(newNode);
         }
         //Down
         if(isCanMove(row-1,col))
         {
-            newNode = new Node(row-1, col, index);
-            newNode->t = current.t;
+            Node newNode(row-1, col, index);
+            newNode.t = current.t;
             if(turnToUpDown)
             {
-                newNode->t += turnningCost;
+                newNode.t += turnningCost;
             }
-            neighbours.push_back(*newNode);
+            neighbours.push_back(newNode);
         }
         //Right
         if(isCanMove(row,col+1))
         {
-            newNode = new Node(row, col + 1, index);
-            newNode->t = current.t;
+            Node newNode(row, col+1, index);
+            newNode.t = current.t;
             if(turnToRightLeft)
             {
-                newNode->t += turnningCost;
+                newNode.t += turnningCost;
             }
-            neighbours.push_back(*newNode);
+            neighbours.push_back(newNode);
         }
         //Left
         if(isCanMove(row,col-1))
         {
-            newNode = new Node(row, col - 1, index);
-            newNode->t = current.t;
+            Node newNode(row, col - 1, index);
+            newNode.t = current.t;
             if(turnToRightLeft)
             {
-                newNode->t += turnningCost;
+                newNode.t += turnningCost;
             }
-            neighbours.push_back(*newNode);
+            neighbours.push_back(newNode);
         }
         return neighbours;
     }
@@ -352,7 +349,7 @@ class PathFinder
         start->h = hValue(*start);
         //std::cout<< "start h : "<< start.h <<std::endl;
         start->oAcc = oValue(*start);
-        start->o = oValue(*start) * 10;
+        start->o = oValue(*start);
         //std::cout<< "start o : "<< start.o <<std::endl;
         start->t = 0;
         start->f = start->g + start->o + start->h + start->t;// start.t + start->h;
@@ -360,7 +357,8 @@ class PathFinder
         //come_from[start.row][start.col] = start;
 
         openSet.push(*start);
-        openMap.emplace(*start, *start);
+        std::pair<Node,Node> node (*start, *start);
+        openMap.insert(node);
 
         while(!openSet.empty())
         {
@@ -369,11 +367,18 @@ class PathFinder
             openMap.erase(current);
 
             closeSet.push_back(current);
-            realCloseMap.emplace(current, current);
+            std::pair<Node,Node> node (current, current);
+            realCloseMap.insert(node);
             
             if(current.row == goal->row && current.col == goal->col)
             {
                     ROS_INFO("Astar Destinaltion reached");
+                    realCloseMap.erase(realCloseMap.begin(), realCloseMap.end());
+                    openMap.erase(openMap.begin(), openMap.end());
+                    //openSet.erase(openSet.begin(), openMap.end());
+                    //realCloseMap.~unordered_map();
+                    //openMap.~unordered_map();
+                    //openSet.~priority_queue();
                     return reconstruct(current);
             }
             
@@ -386,7 +391,7 @@ class PathFinder
                 child.g = current.g + G_OFFSET_4;
                 child.h = hValue(child);
                 child.oAcc = current.oAcc + oValue(child);
-                child.o = child.oAcc; //(child.oAcc / child.g) * 10;
+                child.o =  child.oAcc; //(child.oAcc / child.g) * 10; //child.oAcc;
                 child.f = child.g + child.o + child.h + child.t;
                 
                 std::unordered_map<Node,Node>::const_iterator gotClose = realCloseMap.find (child);
@@ -404,7 +409,8 @@ class PathFinder
                     //TODO
                 }else{
                     openSet.push(child);
-                    openMap.emplace(child, child);
+                    std::pair<Node,Node> node (child, child);
+                    openMap.insert(node);
                 }
                 
                 
@@ -431,7 +437,7 @@ class PathFinder
         std::cout<<"Reconstruct Ends "<<std::endl;
 
         // Should this be just larger than 0 or it could equal 0
-        for(int i = path.size() - 1; i > 0; i--)
+        for(int i = path.size() - 1; i >= 0; i--)
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
            std::cout << "Path No."<< i << " Node G & H & T & O & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).o << " , "<<path.at(i).f <<" )" <<std::endl;
@@ -447,16 +453,6 @@ class PathFinder
            finalPath.poses.push_back(p);
         }
 
-        //Add the goal point in the path. For some reason, the path will miss the two points(one is the goal and one the one before the goal), this could be a TODO;
-        geometry_msgs::PoseStamped p;
-        p.pose.position.x = goal->col * cell_size;
-        p.pose.position.y = goal->row * cell_size;
-        p.pose.orientation.x = 0;
-        p.pose.orientation.y = 0;
-        p.pose.orientation.z = 0;
-        p.pose.orientation.w = 1;
-
-        finalPath.poses.push_back(p);
 
         finalPath.header.stamp = ros::Time::now();
         finalPath.header.frame_id = "/map";
@@ -729,11 +725,13 @@ int main(int argc, char **argv)
           *explored = *map;
           path = pf.getPath();
           //std::cout<<"path size : "<<path.poses.size()<<std::endl;
+          /*
           if(path.poses.size() > 0)
           {
              simpilifiedPath = simpilifyPath(path);
           }
-           path_pub_simple.publish(simpilifiedPath);
+          * */
+           //path_pub_simple.publish(simpilifiedPath);
           path_pub.publish(path);
           explored_pub.publish(*explored);
         }
