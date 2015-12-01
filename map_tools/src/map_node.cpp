@@ -226,7 +226,7 @@ int main(int argc, char **argv)
         if(counter < rate/mapRate){
             counter++;
         }else{
-            mso->getMap("distance", map); 
+            mso->getMap("inflated", map); 
             map.header.stamp = current_time;
             map_pub_obj.publish(map);
             counter = 0;
