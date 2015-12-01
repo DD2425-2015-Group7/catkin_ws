@@ -517,11 +517,8 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
 
     //Show the new path(corner Point)
     std::cout<<"Simple Path Size is: "<< newPath.poses.size()<<std::endl;
-    for(int i = 0; i < newPath.poses.size(); i++)
-    {
-        //std::cout<< "Corner Path No." << i <<" point is X: "<< newPath.poses.at(i).pose.position.x << " Y :" << newPath.poses.at(i).pose.position.y << std::endl;
-    }
 
+    /*
 
     nav_msgs::Path finalPath;
     //Simplify the path further (ignore the point that is too close)
@@ -586,10 +583,16 @@ nav_msgs::Path simpilifyPath(nav_msgs::Path path)
 //    {
 //        std::cout<< "Final Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
 //    }
+
+
     //This is for the final Path
     finalPath.header.stamp = ros::Time::now();
     finalPath.header.frame_id = "/map";
     return finalPath;
+           */
+    newPath.header.stamp = ros::Time::now();
+    newPath.header.frame_id = "/map";
+    return newPath;
 }
 
 
@@ -661,9 +664,9 @@ int main(int argc, char **argv)
     map->info.height = 0;
     map->info.width = 0;
 
-    ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
-    ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Astar/Simplepath",10);
-    ros::Publisher explored_pub = handle.advertise<nav_msgs::OccupancyGrid>("/Astar/explored",1);
+    //ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
+    //ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Astar/Simplepath",10);
+    //ros::Publisher explored_pub = handle.advertise<nav_msgs::OccupancyGrid>("/Astar/explored",1);
 
 
     //Wait 8 s for the map service.
@@ -680,7 +683,7 @@ int main(int argc, char **argv)
 
     ros::ServiceServer path_srv = handle.advertiseService("/Astar/pathTest", GetPath);
 
-    
+    /*
     int StartRow = 23;//211;//138;//25;//92;//20;
     int StartCol = 205;//195;//220;//195;//200;//38;//193;//20;
     // row & col : start -> 211,195  || goal : 73,186
@@ -706,15 +709,19 @@ int main(int argc, char **argv)
 
     PathFinder pf(start,goal);
 
-    ros::Rate loop_rate(2);
+
 
     nav_msgs::Path path;
     nav_msgs::Path simpilifiedPath;
+    */
+
+    ros::Rate loop_rate(2);
+
     while (ros::ok())
     {
         updateMap();
         
-        
+        /*
         if(map->data.size() < 1000)
         {
             ROS_INFO("Map is not yet intialized");
@@ -725,16 +732,16 @@ int main(int argc, char **argv)
           *explored = *map;
           path = pf.getPath();
           //std::cout<<"path size : "<<path.poses.size()<<std::endl;
-          /*
+
           if(path.poses.size() > 0)
           {
              simpilifiedPath = simpilifyPath(path);
           }
-          * */
-           //path_pub_simple.publish(simpilifiedPath);
+           path_pub_simple.publish(simpilifiedPath);
           path_pub.publish(path);
           explored_pub.publish(*explored);
         }
+        */
         
         ros::spinOnce();
         loop_rate.sleep();
