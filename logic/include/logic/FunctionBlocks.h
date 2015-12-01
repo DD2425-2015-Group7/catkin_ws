@@ -6,6 +6,7 @@
 #include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Point.h"
 #include "geometry_msgs/PointStamped.h"
+#include "nav_msgs/Path.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/Odometry.h"
 #include "tf/transform_listener.h"
@@ -19,6 +20,8 @@
 #include "map_tools/GetMap.h"
 
 #include "path_planning/GetPath.h" 
+
+#include "motion_controllers/GetPathPoints.h"
 
 #include "classification/ClassifiedObject.h"
 #include "classification/ClassifiedObjectArray.h"
@@ -49,6 +52,7 @@ class FunctionBlocks
         bool objectDetected(void);
         
         //Motion.
+	nav_msgs::Path getPath(geometry_msgs::Pose&);
         double dist2goal(geometry_msgs::Pose&);
         int time2goal(geometry_msgs::Pose&); 
         bool poseReached(geometry_msgs::Pose&, double radius, double yaw);
@@ -69,7 +73,7 @@ class FunctionBlocks
         void sendEvidence(classification::ClassifiedObjectArray &);
         void openDoor(void);
         void startTimer(const int seconds);
-        int secondsLeft(void); //Ondrej
+        int secondsLeft(void);
         bool testTimer(void);
         
         //Localization.
@@ -90,7 +94,7 @@ class FunctionBlocks
         int minOccupied;
         
         nav_msgs::OccupancyGrid *mapInflated;
-        ros::ServiceClient *map_client, *add_objects_client, *getPath_client;
+        ros::ServiceClient *map_client, *add_objects_client, *getPath_client, *getPathPoints_client;;
         ros::Publisher *init_mcl_pub;
 	ros::Publisher *espeak_pub;
 	ros::Subscriber *vision_sub;

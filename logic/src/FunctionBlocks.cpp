@@ -20,14 +20,19 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
         return;
     }
 
-    /*
-    //Wait 2 s for the add objects to map service.
+    
+    //Wait 2 s for the path test service
     if(!ros::service::waitForService("/Astart/pathTest", 2000)){ 
       ROS_ERROR("GetPath service unreachable.");
       return;
     }
-    */
-    
+
+    //Wait 2 s for the points path execution
+    if(!ros::service::waitForService("/motion_controllers/PathPointsExec", 2000)){ 
+      ROS_ERROR("PathPoiintsExec service unreachable.");
+      return;
+    }
+   
     objectsVision = new classification::ClassifiedObjectArray();
     objectsMap = new classification::ClassifiedObjectArray();
     objects2visit = new classification::ClassifiedObjectArray();
@@ -43,6 +48,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     getPath_client = new ros::ServiceClient();
     *getPath_client = n.serviceClient<path_planning::GetPath>("/Astar/pathTest");
 
+    getPathPoints_client = new ros::ServiceClient();
+    *getPathPoints_client = n.serviceClient<motion_controllers::GetPathPoints>("/motion_controllers/PathPointsExec");
 
     espeak_pub = new ros::Publisher();;
     vision_sub = new ros::Subscriber();
@@ -167,6 +174,9 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   this->turn(angle);
   
+  // We reset the Array
+  objectsVision->objects.clear();
+
   classification::ClassifiedObjectArray verifiedObjects;
   
   verifiedObjects.header.frame_id = objectsVision->header.frame_id;
@@ -183,7 +193,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
     loop_rate.sleep();
   } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
   
-  ROS_INFO("Attente fini");
+  ROS_INFO("Waiting time finished");
   
   std::unordered_map<std::string,int> nbrObj;
   std::unordered_map<std::string, int>::iterator it_nbr;
@@ -233,6 +243,10 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 	objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
 	objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
 	objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
+	//Average of the second debris point
+	objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
+	objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
+	objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
 	//Average of the bounding box
 	objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
 	objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
@@ -398,6 +412,16 @@ bool FunctionBlocks::isPointFree(double x, double y)
     return (v < minOccupied);
 }
 
+nav_msgs::Path FunctionBlocks::getPath(geometry_msgs::Pose &p){
+  path_planning::GetPath srv;
+  srv.request.goal = p;
+  if (getPath_client->call(srv)){
+    return (srv.response.path);
+  } else {
+    ROS_ERROR("Failed to call service GetPath");
+  }
+}
+
 geometry_msgs::Pose FunctionBlocks::randUniform(void)
 {
     geometry_msgs::Pose rs;
@@ -416,20 +440,17 @@ geometry_msgs::Pose FunctionBlocks::randUniform(void)
  {
    double distance = 0.0;
 
-   path_planning::GetPath srv;
-   srv.request.goal = p;
-   if (getPath_client->call(srv)){
-       for(int i = 1; (i < srv.response.path.poses.size()); i++)
-	 {
-	   distance += sqrt(
-			    pow((srv.response.path.poses[i-1].pose.position.y - srv.response.path.poses[i].pose.position.y), 2) +
-			    pow((srv.response.path.poses[i-1].pose.position.x - srv.response.path.poses[i].pose.position.x), 2)
-			    );
-	 }
-     return distance;
-   } else {
-     ROS_ERROR("Failed to call service GetPath for the distance");
-   }
+   nav_msgs::Path path =  getPath(p);
+
+   for(int i = 1; (i < path.poses.size()); i++)
+     {
+       distance += sqrt(
+			pow((path.poses[i-1].pose.position.y - path.poses[i].pose.position.y), 2) +
+			pow((path.poses[i-1].pose.position.x - path.poses[i].pose.position.x), 2)
+			);
+     }
+
+   return distance;
  }
     
 int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
@@ -439,33 +460,54 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
   double av_lin_vel = 0.125;
   int time2turn = 1; 
 
-  path_planning::GetPath srv;
-  srv.request.goal = p;
-  if (getPath_client->call(srv)){
-      for(int i = 1; i < srv.response.path.poses.size(); i++)
-	{
-	  distance += sqrt(
-			   pow((srv.response.path.poses[i-1].pose.position.y - srv.response.path.poses[i].pose.position.y), 2) +
-			   pow((srv.response.path.poses[i-1].pose.position.x - srv.response.path.poses[i].pose.position.x), 2)
-			   );
-	}
+  nav_msgs::Path path =  getPath(p);
+  
+  for(int i = 1; i < path.poses.size(); i++)
+    {
+      distance += sqrt(
+		       pow((path.poses[i-1].pose.position.y - path.poses[i].pose.position.y), 2) +
+		       pow((path.poses[i-1].pose.position.x - path.poses[i].pose.position.x), 2)
+		       );
+    }
 
-    time = (distance * av_lin_vel) + (srv.response.path.poses.size() * time2turn); 
+  time = (distance * av_lin_vel) + (path.poses.size() * time2turn); 
 
-    return time;
-  } else {
-    ROS_ERROR("Failed to call service GetPath for the time");
-  }
+  return time;
+
 }
 
- bool FunctionBlocks::poseReached(geometry_msgs::Pose &p, double radius, double yaw)
+ bool FunctionBlocks::poseReached(geometry_msgs::Pose &pose, double radius, double yaw)
  {
-   double odom_yaw = tf::getYaw(odomPose.orientation);
-   double goal_yaw = tf::getYaw(p.orientation);
+   std::string TargetFrameName = "/map";
+   std::string CurrentFrame = "/base_link";
+
+   geometry_msgs::PoseStamped p, pbis;
+   p.header.frame_id = CurrentFrame;
+   p.header.stamp = ros::Time(0);
+   p.pose.position.x = 0.0;
+   p.pose.position.y = 0.0;
+   p.pose.position.z = 0.0;
+   p.pose.orientation.x = 0.0;
+   p.pose.orientation.y = 0.0;
+   p.pose.orientation.y = 0.0;
+   p.pose.orientation.z = 1.0;
+
+   try
+     {
+       tf_listener->waitForTransform(TargetFrameName, CurrentFrame, ros::Time(0), ros::Duration(1.0) );
+       tf_listener->transformPose(TargetFrameName,p,pbis);
+     }
+   catch(tf::TransformException &ex)
+     {
+       ROS_ERROR("%s",ex.what());
+     }
+
+   double odom_yaw = tf::getYaw(pbis.pose.orientation);
+   double goal_yaw = tf::getYaw(pose.orientation);
 
    double distance = sqrt(
-			 pow(p.position.x - odomPose.position.x, 2) +
-			 pow(p.position.y - odomPose.position.y, 2)
+			 pow(pose.position.x - pbis.pose.position.x, 2) +
+			 pow(pose.position.y - pbis.pose.position.y, 2)
 			 );
 
    //distance = dist2goal(p) if Astar faster
@@ -475,7 +517,13 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 
 void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
-  goalPose_pub->publish(p);
+  nav_msgs::Path path =  getPath(p);
+
+  motion_controllers::GetPathPoints srv;
+  srv.request.path = path;
+  if (!(getPathPoints_client->call(srv))) {
+    ROS_ERROR("Failed to call service GetPathPoints to go to a goal");
+  }
 }
 
 void FunctionBlocks::setWallFollower(bool on)
@@ -495,7 +543,7 @@ geometry_msgs::Pose FunctionBlocks::exploreNext(void)
     p = randUniform();
     next = p;
     double dist, maxDist = dist2goal(p);
-    for(int i = 1; i < 50; i++){
+    for(int i = 1; i < 5; i++){
         p = randUniform();
         dist = dist2goal(p);
         if(dist > maxDist){
@@ -660,5 +708,5 @@ void FunctionBlocks::stopRobotAStar(void)
   stop.orientation.z = -1.0;
   stop.orientation.w = -1.0;
   
-  goalPose_pub->publish(stop);
+  go2goal(stop);
 }

@@ -11,6 +11,8 @@
 
 #include "tf/tf.h"
 
+#include "motion_controllers/GetPathPoints.h"
+#include "std_msgs/Bool.h"
 
 //This closeEnough is used to determine when to move to next point
 double closeEnough = 0.05;
@@ -27,14 +29,13 @@ std_msgs::String str;
 
 int nextPoint = 0;
 
-void setPath(const nav_msgs::Path::ConstPtr& msg)
+bool GetPathPoints(motion_controllers::GetPathPoints::Request  &req, motion_controllers::GetPathPoints::Response  &res )
 {
-    ROS_INFO("set path");
-    nextPoint = 0;
-    path.header = msg->header;
-    path.poses = msg->poses;
+  nextPoint = 0;
+  path.header = req.path.header;
+  path.poses = req.path.poses;
+  return true;
 }
-
 
 void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
 {
@@ -61,12 +62,12 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
         goalPose.pose.position.y = 0.0;
         stopped = true;
     }else{
-        stopped = false;
-        geometry_msgs::PoseStamped p;
-        p.header = path.header;
-        p.header.stamp = ros::Time(0);
+      stopped = false;
+      geometry_msgs::PoseStamped p;
+      p.header = path.header;
+      p.header.stamp = ros::Time(0);
         p.pose = path.poses[nextPoint].pose;
-
+	
         tf::StampedTransform transform;
         try
         {
@@ -98,10 +99,8 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
     ROS_INFO("Goal Point X :%f",goalPose.pose.position.x);
     ROS_INFO("Goal Point Y :%f",goalPose.pose.position.y);
     
-    if(stopped == true && lastStopped == true){
-        
-    }else{
-        pub_pose->publish(goalPose.pose);
+    if(!(stopped && lastStopped)) {
+      pub_pose->publish(goalPose.pose);
     }
     lastStopped = stopped;
 }
@@ -112,28 +111,21 @@ int main(int argc, char *argv[])
     ros::init(argc, argv, "pub_points_list");
     ros::NodeHandle handle;
 
-    ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/path_planner/path",1000,setPath);
-    //ros::Subscriber sub_path = handle.subscribe<nav_msgs::Path>("/Astar/path",1000,setPath);
-
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("/odom",1000,calculatePosition);
     ros::Publisher pub_pose_obj = handle.advertise<geometry_msgs::Pose>("/path_pose", 1000);
-    ros::Publisher pub_espeak_obj = handle.advertise<std_msgs::String>("/espeak/string",1000);
 
+    ros::ServiceServer getPathPoints_server = handle.advertiseService("/motion_controllers/PathPointsExec", GetPathPoints);
 
-    pub_espeak = &pub_espeak_obj;
     pub_pose = &pub_pose_obj;
 
     TargetFrameName = "/base_link";
 
     tf_listener = new tf::TransformListener();
 
-
     ros::Rate loopRate(20);
-
 
     while(ros::ok())
     {
-
         ros::spinOnce();
         loopRate.sleep();
     }
