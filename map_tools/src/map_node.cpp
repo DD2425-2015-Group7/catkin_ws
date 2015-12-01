@@ -119,6 +119,15 @@ void publishObjects(void)
         obj_marker.pose.position.x = clsObj->objects[i].p.x;
         obj_marker.pose.position.y = clsObj->objects[i].p.y;
         obj_marker.id = i;
+        if(clsObj->objects[i].name.compare("debris")){
+            obj_marker.color.r = (1.0);
+            obj_marker.color.g = (1.0);
+            obj_marker.color.b = (1.0);
+        }else{
+            obj_marker.color.r = (255.0/255.0);
+            obj_marker.color.g = (0.0/255.0);
+            obj_marker.color.b = (0.0/255.0);
+        }
         all_markers.markers.push_back(obj_marker);
     }
     vis_pub->publish(all_markers);
@@ -217,7 +226,7 @@ int main(int argc, char **argv)
         if(counter < rate/mapRate){
             counter++;
         }else{
-            mso->getMap("inflated", map); 
+            mso->getMap("distance", map); 
             map.header.stamp = current_time;
             map_pub_obj.publish(map);
             counter = 0;
