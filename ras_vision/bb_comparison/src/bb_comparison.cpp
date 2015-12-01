@@ -42,7 +42,9 @@ public:
         ros::spin ();
         loop_rate.sleep();
     }
+
     void comp_callback(const  detection::BoundingBoxArray::ConstPtr&  msg_a, const  plane_extraction::BoundingBox_FloatArray::ConstPtr&  msg_b, const geometry_msgs::PolygonStamped::ConstPtr& msg_c){
+
 
 
         detection::BoundingBoxArray bb_array_msg;
