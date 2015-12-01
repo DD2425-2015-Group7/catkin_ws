@@ -26,7 +26,7 @@ int turnningCost = 300;
 
 int G_OFFSET_4 = 1;
 
-nav_msgs::OccupancyGrid *map, *explored;
+nav_msgs::OccupancyGrid *map;//, *explored;
 geometry_msgs::PoseStamped startPose;
 tf::TransformListener *tf_listener;
 
@@ -179,7 +179,7 @@ class PathFinder
         }
         else
         {
-            explored->data[row*explored->info.width + col] = 120;
+            //explored->data[row*explored->info.width + col] = 120;
             return true;
         }
     }
@@ -676,7 +676,7 @@ int main(int argc, char **argv)
 
     //Set map;
     map = new nav_msgs::OccupancyGrid();
-    explored = new nav_msgs::OccupancyGrid();
+    //explored = new nav_msgs::OccupancyGrid();
     map->info.height = 0;
     map->info.width = 0;
 
