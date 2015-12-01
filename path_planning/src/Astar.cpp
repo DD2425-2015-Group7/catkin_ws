@@ -456,6 +456,7 @@ class PathFinder
 
         finalPath.header.stamp = ros::Time::now();
         finalPath.header.frame_id = "/map";
+        /*
         std::cout<<"Original Path Size is: "<< finalPath.poses.size()<<std::endl;
         //Show the Original path
 
@@ -463,137 +464,152 @@ class PathFinder
         {
             //std::cout<< "Original Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
         }
+        */
 
 
         return finalPath;
     }
-};
 
-nav_msgs::Path simpilifyPath(nav_msgs::Path path)
-{
-    nav_msgs::Path newPath;
-
-    //This loop is used to store the "corner" point(either x or y value changes)
-    //checkY means we will check the y difference for the two points
-    bool checkY = true;
-    for(int i = 0; i < path.poses.size() - 1; i++)
+    nav_msgs::Path simpilifyPath(nav_msgs::Path path)
     {
-       int j = i + 1;
-       if(checkY)
-       {
-           if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
-           {
-               //ROS_INFO("X value changes");
-               geometry_msgs::PoseStamped p;
-               p.pose.position.x = path.poses.at(i).pose.position.x;
-               p.pose.position.y = path.poses.at(i).pose.position.y;
-               p.pose.orientation.x = 0;
-               p.pose.orientation.y = 0;
-               p.pose.orientation.z = 0;
-               p.pose.orientation.w = 1;
+        nav_msgs::Path newPath;
 
-               newPath.poses.push_back(p);
-               checkY = false;
-            }
-       }
-       else
-       {
-           if(path.poses.at(i).pose.position.x != path.poses.at(j).pose.position.x )
-           {
-               //ROS_INFO("X value changes");
-               geometry_msgs::PoseStamped p;
-               p.pose.position.x = path.poses.at(i).pose.position.x;
-               p.pose.position.y = path.poses.at(i).pose.position.y;
-               p.pose.orientation.x = 0;
-               p.pose.orientation.y = 0;
-               p.pose.orientation.z = 0;
-               p.pose.orientation.w = 1;
-
-               newPath.poses.push_back(p);
-               checkY = true;
-            }
-       }
-    }
-
-    //Show the new path(corner Point)
-    std::cout<<"Simple Path Size is: "<< newPath.poses.size()<<std::endl;
-
-    /*
-
-    nav_msgs::Path finalPath;
-    //Simplify the path further (ignore the point that is too close)
-    int start = 0;
-    int end = start + 1;
-    //Add the firstPoint (start Point) to the path
-    geometry_msgs::PoseStamped p;
-    p.pose.position.x = newPath.poses.at(0).pose.position.x;
-    p.pose.position.y = newPath.poses.at(0).pose.position.y;
-    p.pose.orientation.x = 0;
-    p.pose.orientation.y = 0;
-    p.pose.orientation.z = 0;
-    p.pose.orientation.w = 1;
-
-    finalPath.poses.push_back(p);
-
-    while(end < newPath.poses.size())
-    {
-        //std::cout<< "End Value : "<< end <<std::endl;
-        //std::cout<< "Start Value : "<< start <<std::endl;
-        double distanceBetweenPoints = sqrt((newPath.poses.at(start).pose.position.y - newPath.poses.at(end).pose.position.y)*(newPath.poses.at(start).pose.position.y - newPath.poses.at(end).pose.position.y) +
-                (newPath.poses.at(start).pose.position.x - newPath.poses.at(end).pose.position.x)*(newPath.poses.at(start).pose.position.x - newPath.poses.at(end).pose.position.x));
-        //std::cout<< "Distance : "<< distanceBetweenPoints <<std::endl;
-
-        //If the distance between those two points are less than 0.1 meters
-        if(distanceBetweenPoints < 0.1)
+        //This loop is used to store the "corner" point(either x or y value changes)
+        //checkY means we will check the y difference for the two points
+        bool checkY = true;
+        for(int i = 0; i < path.poses.size() - 1; i++)
         {
-            end++;
+           int j = i + 1;
+           if(checkY)
+           {
+               if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
+               {
+                   //ROS_INFO("X value changes");
+                   geometry_msgs::PoseStamped p;
+                   p.pose.position.x = path.poses.at(i).pose.position.x;
+                   p.pose.position.y = path.poses.at(i).pose.position.y;
+                   p.pose.orientation.x = 0;
+                   p.pose.orientation.y = 0;
+                   p.pose.orientation.z = 0;
+                   p.pose.orientation.w = 1;
+
+                   newPath.poses.push_back(p);
+                   checkY = false;
+                }
+           }
+           else
+           {
+               if(path.poses.at(i).pose.position.x != path.poses.at(j).pose.position.x )
+               {
+                   //ROS_INFO("X value changes");
+                   geometry_msgs::PoseStamped p;
+                   p.pose.position.x = path.poses.at(i).pose.position.x;
+                   p.pose.position.y = path.poses.at(i).pose.position.y;
+                   p.pose.orientation.x = 0;
+                   p.pose.orientation.y = 0;
+                   p.pose.orientation.z = 0;
+                   p.pose.orientation.w = 1;
+
+                   newPath.poses.push_back(p);
+                   checkY = true;
+                }
+           }
         }
-        else
-        {
-            //std::cout<< "The point we add : "<< "( " << newPath.poses.at(end).pose.position.x<< " , "<<newPath.poses.at(end).pose.position.y <<" )"<<std::endl;
-            //std::cout<< "End Value : "<< end <<std::endl;
-            //std::cout<< "Path size is : "<< newPath.poses.size() << std::endl;
-            p.pose.position.x = newPath.poses.at(end).pose.position.x;
-            p.pose.position.y = newPath.poses.at(end).pose.position.y;
+
+            geometry_msgs::PoseStamped p;
+            p.pose.position.x = goal->col * cell_size;
+            p.pose.position.y = goal->row * cell_size;
             p.pose.orientation.x = 0;
             p.pose.orientation.y = 0;
             p.pose.orientation.z = 0;
             p.pose.orientation.w = 1;
+            newPath.poses.push_back(p);
 
-            finalPath.poses.push_back(p);
+        //Show the new path(corner Point)
+        //std::cout<<"Simple Path Size is: "<< newPath.poses.size()<<std::endl;
+        //std::cout<<"Simple Path Last point : "<< newPath.poses.back().pose.position.x<< " " <<newPath.poses.back().pose.position.y<<std::endl;
 
-            start = end;
-            end = start + 1;
+
+        /*
+        nav_msgs::Path finalPath;
+        //Simplify the path further (ignore the point that is too close)
+        int start = 0;
+        int end = start + 1;
+        //Add the firstPoint (start Point) to the path
+        geometry_msgs::PoseStamped p;
+        p.pose.position.x = newPath.poses.at(0).pose.position.x;
+        p.pose.position.y = newPath.poses.at(0).pose.position.y;
+        p.pose.orientation.x = 0;
+        p.pose.orientation.y = 0;
+        p.pose.orientation.z = 0;
+        p.pose.orientation.w = 1;
+
+        finalPath.poses.push_back(p);
+
+        while(end < newPath.poses.size())
+        {
+            //std::cout<< "End Value : "<< end <<std::endl;
+            //std::cout<< "Start Value : "<< start <<std::endl;
+            double distanceBetweenPoints = sqrt((newPath.poses.at(start).pose.position.y - newPath.poses.at(end).pose.position.y)*(newPath.poses.at(start).pose.position.y - newPath.poses.at(end).pose.position.y) +
+                    (newPath.poses.at(start).pose.position.x - newPath.poses.at(end).pose.position.x)*(newPath.poses.at(start).pose.position.x - newPath.poses.at(end).pose.position.x));
+            //std::cout<< "Distance : "<< distanceBetweenPoints <<std::endl;
+
+            //If the distance between those two points are less than 0.1 meters
+            if(distanceBetweenPoints < 0.1)
+            {
+                end++;
+            }
+            else
+            {
+                //std::cout<< "The point we add : "<< "( " << newPath.poses.at(end).pose.position.x<< " , "<<newPath.poses.at(end).pose.position.y <<" )"<<std::endl;
+                //std::cout<< "End Value : "<< end <<std::endl;
+                //std::cout<< "Path size is : "<< newPath.poses.size() << std::endl;
+                p.pose.position.x = newPath.poses.at(end).pose.position.x;
+                p.pose.position.y = newPath.poses.at(end).pose.position.y;
+                p.pose.orientation.x = 0;
+                p.pose.orientation.y = 0;
+                p.pose.orientation.z = 0;
+                p.pose.orientation.w = 1;
+
+                finalPath.poses.push_back(p);
+
+                start = end;
+                end = start + 1;
+            }
         }
+        // TODO - There is some risk that the destination will be removed. If this happens, how to solve this
+        // 1. Remove the last point and add the destination point; <-- I personally prefer this one
+        // 2. Just add the destination Point.
+        // And here we could use the "newPath last point" as the goal value
+        if(finalPath.poses.back().pose.position.x != newPath.poses.back().pose.position.x &&
+               finalPath.poses.back().pose.position.y != newPath.poses.back().pose.position.y )
+        {
+            finalPath.poses.pop_back(); // Delete the last point
+            finalPath.poses.push_back(newPath.poses.back()); // Add the last point of the newPath
+        }
+
+
+        std::cout<< "FinalPath size is : "<< finalPath.poses.size() << std::endl;
+    //    for(int i = 0; i < finalPath.poses.size(); i++)
+    //    {
+    //        std::cout<< "Final Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
+    //    }
+
+
+        //This is for the final Path
+        finalPath.header.stamp = ros::Time::now();
+        finalPath.header.frame_id = "/map";
+        return finalPath;
+            */
+
+        newPath.header.stamp = ros::Time::now();
+        newPath.header.frame_id = "/map";
+        return newPath;
+
     }
-    // TODO - There is some risk that the destination will be removed. If this happens, how to solve this
-    // 1. Remove the last point and add the destination point; <-- I personally prefer this one
-    // 2. Just add the destination Point.
-    // And here we could use the "newPath last point" as the goal value
-    if(finalPath.poses.back().pose.position.x != newPath.poses.back().pose.position.x &&
-           finalPath.poses.back().pose.position.y != newPath.poses.back().pose.position.y )
-    {
-        finalPath.poses.pop_back(); // Delete the last point
-        finalPath.poses.push_back(newPath.poses.back()); // Add the last point of the newPath
-    }
+};
 
 
-    std::cout<< "FinalPath size is : "<< finalPath.poses.size() << std::endl;
-//    for(int i = 0; i < finalPath.poses.size(); i++)
-//    {
-//        std::cout<< "Final Path No." << i <<" point is X: "<< finalPath.poses.at(i).pose.position.x << " Y :" << finalPath.poses.at(i).pose.position.y << std::endl;
-//    }
-
-
-    //This is for the final Path
-    finalPath.header.stamp = ros::Time::now();
-    finalPath.header.frame_id = "/map";
-    return finalPath;
-           */
-    newPath.header.stamp = ros::Time::now();
-    newPath.header.frame_id = "/map";
-    return newPath;
-}
 
 
 
@@ -637,7 +653,7 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 
     PathFinder pf(start,goal);
     nav_msgs::Path originalPath = pf.getPath();
-    nav_msgs::Path simplePath = simpilifyPath(originalPath);
+    nav_msgs::Path simplePath = pf.simpilifyPath(originalPath);
     return simplePath;
 }
 
@@ -693,7 +709,7 @@ int main(int argc, char **argv)
     
     Node start1(23, 205, -1);
     Node goal1(70, 205, -1);
-    Node goal1a(50, 220, -1);
+    //Node goal1(50, 220, -1);
     Node start2(20, 20, -1);
     Node goal2(25, 25, -1);
     Node goal3(70, 50, -1);
@@ -713,6 +729,7 @@ int main(int argc, char **argv)
 
     nav_msgs::Path path;
     nav_msgs::Path simpilifiedPath;
+
     */
 
     ros::Rate loop_rate(2);
@@ -735,7 +752,7 @@ int main(int argc, char **argv)
 
           if(path.poses.size() > 0)
           {
-             simpilifiedPath = simpilifyPath(path);
+             simpilifiedPath = pf.simpilifyPath(path);
           }
            path_pub_simple.publish(simpilifiedPath);
           path_pub.publish(path);
