@@ -1,4 +1,6 @@
 #include "vector"
+#include <queue>
+#include <unordered_map>
 #include "ros/ros.h"
 #include <limits>
 #include "std_msgs/String.h"
@@ -24,7 +26,7 @@ int turnningCost = 100;
 
 int G_OFFSET_4 = 1;
 
-nav_msgs::OccupancyGrid *map;
+nav_msgs::OccupancyGrid *map, *explored;
 geometry_msgs::PoseStamped startPose;
 tf::TransformListener *tf_listener;
 
@@ -49,18 +51,48 @@ struct Node
     int col;
     int parent;
 
-    int g; //past road cost
-    int h;
+    double g; //past road cost
+    double h;
 
-    int o; // O stands for the distance between the current point and the nearest obstacle
-    int t; // T stands for the turn cost. This value will be very high, if the node has to turn.
+    double oAcc;
+    double o; // O stands for the distance between the current point and the nearest obstacle
+    double t; // T stands for the turn cost. This value will be very high, if the node has to turn.
 
-    int f; //heuristic, f = g + h + o
+    double f; //heuristic, f = g + h + o
 
     Node(int row, int col, int parent){
         this->parent = parent;
         this->row = row;
         this->col = col;
+    }
+    
+    bool operator==(const Node &other) const
+      { 
+          return (row == other.row && col == other.col);
+      }
+};
+
+namespace std {
+    template <>
+    struct hash<Node> {
+        public:
+        std::size_t operator()(const Node& a) const
+        {
+            std::size_t hash = 13;
+            hash += a.row * 7;
+            hash *= 3;
+            hash += a.col * 17;
+            hash *= 5;
+            return hash;
+        }
+    };
+}
+
+class CompareNodes {
+    public:
+    bool operator()(Node& a, Node& b) // Returns true if a is before b
+    {
+       return (a.f > b.f);
     }
 };
 
@@ -68,9 +100,10 @@ struct Node
 
 class PathFinder
 {
-    Node *start;
-    Node *goal;
-    vector<Node> closeSet;
+    private:
+        Node *start;
+        Node *goal;
+        vector<Node> closeSet;
 
     public:
     PathFinder(Node node1, Node node2)
@@ -146,6 +179,7 @@ class PathFinder
         }
         else
         {
+            explored->data[row*explored->info.width + col] = 120;
             return true;
         }
     }
@@ -163,9 +197,11 @@ class PathFinder
         // And it this value is true, when this value want to turn up or down, this will return a very high cost
         bool turnToUpDown;
         bool turnToRightLeft;
+        assert(index < closeSet.size());
 
         if(current.parent >= 0)
         {
+            assert(current.parent < closeSet.size());
             previousNode = &(closeSet.at(current.parent)); //come_from[current.row][current.col];
             // Move in horiztal means only col changes
             if(previousNode->col != current.col && previousNode->row == current.row)
@@ -304,87 +340,77 @@ class PathFinder
             nav_msgs::Path nu;
             return nu;
         }
-        vector<Node> openSet;
+        
+        std::priority_queue <Node, std::vector<Node>, CompareNodes > openSet;
+        std::unordered_map<Node, Node> openMap;
+        
+        std::unordered_map<Node, Node> realCloseMap;
         closeSet.clear();
-        openSet.clear();
 
         start->g = 0;
         //std::cout<< "start g : "<< start.g <<std::endl;
         start->h = hValue(*start);
         //std::cout<< "start h : "<< start.h <<std::endl;
-        start->o = oValue(*start);
+        start->oAcc = oValue(*start);
+        start->o = oValue(*start) * 10;
         //std::cout<< "start o : "<< start.o <<std::endl;
         start->t = 0;
         start->f = start->g + start->o + start->h + start->t;// start.t + start->h;
         //std::cout<< "start f : "<< start.f <<std::endl;
         //come_from[start.row][start.col] = start;
 
-        openSet.push_back(*start);
+        openSet.push(*start);
+        openMap.emplace(*start, *start);
 
         while(!openSet.empty())
         {
-            int curIdx = getBestChild(openSet);
-            //std::cout << "curIdx "<< curIdx <<std::endl;
-            Node current = openSet[curIdx];
-            /*
-            if(current.row == 99 && current.col == 66){
-                std::cout << "point 1" << std::endl;
-                std::cout << "point 1." << " Node G & H & T & O & F: ( "<< current.g << " , "<<current.h << " , "<<current.t << " , "<<current.o << " , "<<current.f <<" )" <<std::endl;
-                
-            }
-            if(current.row == 100 && current.col == 65){
-                std::cout << "point 2" << std::endl;
-                std::cout << "point 2." << " Node G & H & T & O & F: ( "<< current.g << " , "<<current.h << " , "<<current.t << " , "<<current.o << " , "<<current.f <<" )" <<std::endl;
-                
-            }
-            * */
-            //std::cout << "Path No."<< i << " Node G & H & T & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).f <<" )" <<std::endl;
-            if(current.row == goal->row && current.col == goal->col)
-            {
-                ROS_INFO("Astar Destinaltion reached");
-                return reconstruct(current);
-            }
+            Node current = openSet.top();
+            openSet.pop();
+            openMap.erase(current);
 
             closeSet.push_back(current);
-
-            openSet.erase(openSet.begin() + curIdx);
+            realCloseMap.emplace(current, current);
+            
+            if(current.row == goal->row && current.col == goal->col)
+            {
+                    ROS_INFO("Astar Destinaltion reached");
+                    return reconstruct(current);
+            }
             
             assert(closeSet.size() > 0);
             vector<Node> neighbours = getNeighbours(closeSet.back(),closeSet.size() -1 );
-            //std::cout << "Neighbours size is "<< neighbours.size()  <<std::endl;
+            
             for(int i = 0; i < neighbours.size(); i++)
             {
                 Node child = neighbours.at(i);
-                //std::cout << "Child's Parent Point Position is : ( "<< child.parent->row << " , "<< child.parent->col << " )"<<std::endl;
                 child.g = current.g + G_OFFSET_4;
                 child.h = hValue(child);
-                child.o = current.o + oValue(child);
-                child.f = child.g + child.t + child.o + child.h;
+                child.oAcc = current.oAcc + oValue(child);
+                child.o = child.oAcc; //(child.oAcc / child.g) * 10;
+                child.f = child.g + child.o + child.h + child.t;
                 
-                int idx = getPosition(closeSet,child);
-                if(idx>=0)
-                {
-                    //We have explored the same node with a better cost.
-                    if(child.f < closeSet[idx].f){
-                        closeSet.erase(closeSet.begin() + idx);
+                std::unordered_map<Node,Node>::const_iterator gotClose = realCloseMap.find (child);
+                if(gotClose != realCloseMap.end()){
+                    if(child.f < gotClose->second.f){
+                        realCloseMap.erase(gotClose);
                     }else{
                         continue;
                     }
                 }
-
-                idx = getPosition(openSet,child);
-                //Not in openSet.
-                if(idx<0)
-                {
-                    openSet.push_back(child);
+                
+                std::unordered_map<Node,Node>::const_iterator got = openMap.find (child);
+                if(got != openMap.end()){
+                    //got->first
+                    //TODO
+                }else{
+                    openSet.push(child);
+                    openMap.emplace(child, child);
                 }
-                else if(child.f < openSet[idx].f)
-                {
-                    openSet[idx]=child;
-                }
+                
                 
          }
      }
+                    
         nav_msgs::Path nu;
         return nu;
         
@@ -635,11 +661,13 @@ int main(int argc, char **argv)
 
     //Set map;
     map = new nav_msgs::OccupancyGrid();
+    explored = new nav_msgs::OccupancyGrid();
     map->info.height = 0;
     map->info.width = 0;
 
     ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
     ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Astar/Simplepath",10);
+    ros::Publisher explored_pub = handle.advertise<nav_msgs::OccupancyGrid>("/Astar/explored",1);
 
 
     //Wait 8 s for the map service.
@@ -656,7 +684,7 @@ int main(int argc, char **argv)
 
     ros::ServiceServer path_srv = handle.advertiseService("/Astar/pathTest", GetPath);
 
-    /*
+    
     int StartRow = 23;//211;//138;//25;//92;//20;
     int StartCol = 205;//195;//220;//195;//200;//38;//193;//20;
     // row & col : start -> 211,195  || goal : 73,186
@@ -666,6 +694,7 @@ int main(int argc, char **argv)
     
     Node start1(23, 205, -1);
     Node goal1(70, 205, -1);
+    Node goal1a(50, 220, -1);
     Node start2(20, 20, -1);
     Node goal2(25, 25, -1);
     Node goal3(70, 50, -1);
@@ -674,12 +703,12 @@ int main(int argc, char **argv)
     Node start(StartRow, StartCol, -1);
     Node goal(GoalRow,GoalCol, -1);
     
-    start = goal3;
-    goal = start2;
-    */
+    start = start2;
+    goal = goal3;
+    
 
 
-    //PathFinder pf(start,goal);
+    PathFinder pf(start,goal);
 
     ros::Rate loop_rate(2);
 
@@ -689,7 +718,7 @@ int main(int argc, char **argv)
     {
         updateMap();
         
-        /*
+        
         if(map->data.size() < 1000)
         {
             ROS_INFO("Map is not yet intialized");
@@ -697,6 +726,7 @@ int main(int argc, char **argv)
         else
         {
           ROS_INFO("Planning a path...");
+          *explored = *map;
           path = pf.getPath();
           //std::cout<<"path size : "<<path.poses.size()<<std::endl;
           if(path.poses.size() > 0)
@@ -705,8 +735,9 @@ int main(int argc, char **argv)
           }
            path_pub_simple.publish(simpilifiedPath);
           path_pub.publish(path);
+          explored_pub.publish(*explored);
         }
-        * */
+        
         ros::spinOnce();
         loop_rate.sleep();
     }
