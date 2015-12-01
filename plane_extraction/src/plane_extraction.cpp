@@ -295,7 +295,13 @@ public:
                         isObject = 7;
                     }else if(RGB < 75){
                         color = "gray";
-                        isObject = 6;
+                        if(cloud_cluster->points.size()>500){
+                            isObject = 9;
+                        }else if(cloud_cluster->points.size() > 350){
+                            isObject = 8;
+                        } else{
+                            isObject = 6;
+                        }
 
                     }else{
                         switch(index){
