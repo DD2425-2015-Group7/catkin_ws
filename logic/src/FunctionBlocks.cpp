@@ -22,14 +22,14 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 
     
     //Wait 2 s for the path test service
-    if(!ros::service::waitForService("/Astart/pathTest", 2000)){ 
+    if(!ros::service::waitForService("/Astar/pathTest", 2000)){ 
       ROS_ERROR("GetPath service unreachable.");
       return;
     }
 
     //Wait 2 s for the points path execution
     if(!ros::service::waitForService("/motion_controllers/PathPointsExec", 2000)){ 
-      ROS_ERROR("PathPoiintsExec service unreachable.");
+      ROS_ERROR("PathPointsExec service unreachable.");
       return;
     }
    

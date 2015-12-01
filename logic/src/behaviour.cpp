@@ -175,14 +175,14 @@ int main(int argc, char **argv)
   ros::NodeHandle n("/behaviour");
     
   startPose = new geometry_msgs::Pose();
-  startPose->position.x = 0.13 + 0.5;
+  startPose->position.x = 0.2;
   startPose->position.y = 0.2;
   startPose->orientation = tf::createQuaternionMsgFromYaw(0);
   
   fb = new FunctionBlocks(n);
 
   std::string behaviour;
-  n.param<std::string>("logic_behaviour", behaviour, "explore_wall");
+  n.param<std::string>("logic_behaviour", behaviour, "explore");
   if(behaviour.compare("explore") == 0){
     explore();
   }else if(behaviour.compare("fetch") == 0){
@@ -194,7 +194,16 @@ int main(int argc, char **argv)
     // fb->fetchNext();
     // fb->testAdd2Map();
     // fb->testTimer();
-    ROS_INFO("It works!");
+    geometry_msgs::Pose test_pose;
+    test_pose.position.x = 2.05;
+    test_pose.position.y = 0.7;
+    test_pose.position.z = 0;
+    test_pose.orientation.x = 0;
+    test_pose.orientation.y = 0;
+    test_pose.orientation.z = 0;
+    test_pose.orientation.w = 1;
+    std::cout << "Size of the test path: " <<  fb->getPath(test_pose).poses.size() << std::endl;
+     std::cout << "Distance test path " <<  fb->dist2goal(test_pose) << std::endl;
     }else if(behaviour.compare("explore_wall") == 0){
         exploreWall();
   }else{
