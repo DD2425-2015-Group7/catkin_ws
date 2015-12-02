@@ -347,6 +347,20 @@ public:
 
 	return nu;
       }
+      if(start->col == goal->col && start->row == goal->row){
+          nav_msgs::Path nu;
+       
+        geometry_msgs::PoseStamped p;
+        p.pose.position.x = start->col * cell_size;
+        p.pose.position.y = start->row * cell_size;
+        p.pose.orientation.x = 0;
+        p.pose.orientation.y = 0;
+        p.pose.orientation.z = 0;
+        p.pose.orientation.w = 1;
+        nu.poses.push_back(p);
+        nu.poses.push_back(p);
+        return nu;
+      }
         
     std::priority_queue <Node, std::vector<Node>, CompareNodes > openSet;
     std::unordered_map<Node, Node> openMap;
@@ -449,8 +463,8 @@ public:
     // Should this be just larger than 0 or it could equal 0
     for(int i = path.size() - 1; i >= 0; i--)
       {
-	std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
-	std::cout << "Path No."<< i << " Node G & H & T & O & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).o << " , "<<path.at(i).f <<" )" <<std::endl;
+	//std::cout<< "Original Path No." << i <<" point is X: "<< path.at(i).col << " Y :" << path.at(i).row<< std::endl;
+	//std::cout << "Path No."<< i << " Node G & H & T & O & F: ( "<< path.at(i).g << " , "<<path.at(i).h << " , "<<path.at(i).t << " , "<<path.at(i).o << " , "<<path.at(i).f <<" )" <<std::endl;
 	geometry_msgs::PoseStamped p;
 	//path.x should be the col value, right? TODO: check how the pub_points works. The coordinate must stay the same
 	p.pose.position.x = path.at(i).col * cell_size;
@@ -490,6 +504,7 @@ public:
     for(int i = 0; i < path.poses.size() - 1; i++)
       {
 	int j = i + 1;
+    assert(j < path.poses.size());
 	if(checkY)
 	  {
 	    if(path.poses.at(i).pose.position.y != path.poses.at(j).pose.position.y )
@@ -669,8 +684,13 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 
   PathFinder pf(start,goal);
   nav_msgs::Path originalPath = pf.getPath();
-  nav_msgs::Path simplePath = pf.simpilifyPath(originalPath);
-  return simplePath;
+  if(originalPath.poses.size()>2){
+      nav_msgs::Path simplePath = pf.simpilifyPath(originalPath);
+      return simplePath;
+  }else{
+      return originalPath;
+  }
+
 }
 
 

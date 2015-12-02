@@ -291,6 +291,7 @@ void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 {
   ROS_INFO("Add2Map");
   geometry_msgs::PointStamped p0, p1, p20, p21;
+  //assert(objects.header.frame_id.compare("cam_link")==0);
   p0.header.frame_id = objects.header.frame_id;
   p0.header.stamp = objects.header.stamp;
   p20.header.frame_id = objects.header.frame_id;
