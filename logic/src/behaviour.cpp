@@ -4,7 +4,7 @@ int safetyTime = 20;
 const int explorationTimeout = 300, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
-const double radiusTolerance = 0.04, yawTolerance = 0.3;
+const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
 
 void localize(void)
 {
@@ -63,9 +63,9 @@ void explore(void)
   do{
     if(!goalSet){
       goal = fb->exploreNext();
+      fb->go2goal(goal);
       goalSet = true;
     }
-    fb->go2goal(goal);
     if(fb->poseReached(goal, radiusTolerance, yawTolerance)){
       goalSet = false;
     }
