@@ -49,7 +49,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *getPath_client = n.serviceClient<path_planning::GetPath>("/Astar/pathTest");
 
     getPathPoints_client = new ros::ServiceClient();
-    *getPathPoints_client = n.serviceClient<motion_controllers::GetPathPoints>("/motion_controllers/PathPointsExec");
+    *getPathPoints_client = n.serviceClient<motion_controllers::GetPathPoints>("/motion_controllers/PathPointsExec", false);
 
     espeak_pub = new ros::Publisher();;
     vision_sub = new ros::Subscriber();
@@ -518,8 +518,6 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 
 void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
-
-  getPathPoints_client->shutdown();
 
   nav_msgs::Path path =  getPath(p);
 
