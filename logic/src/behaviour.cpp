@@ -1,7 +1,7 @@
 #include "logic/FunctionBlocks.h"
 
 int safetyTime = 20; 
-const int explorationTimeout = 300, fetchingTimeout = 180;
+const int explorationTimeout = 90/*300*/, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
 const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
@@ -82,6 +82,7 @@ void explore(void)
     ros::spinOnce();
     loop_rate.sleep();
   } while( (ros::ok()) && (safetyTime + fb->time2goal(*startPose) < fb->secondsLeft()) );
+  fb->stopRobotAStar();
   getOut();
 }
 
