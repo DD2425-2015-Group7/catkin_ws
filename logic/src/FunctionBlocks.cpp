@@ -518,6 +518,9 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 
 void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
+
+  getPathPoints_client->shutdown();
+
   nav_msgs::Path path =  getPath(p);
 
   motion_controllers::GetPathPoints srv;
