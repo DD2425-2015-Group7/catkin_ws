@@ -56,6 +56,11 @@ void explore(void)
   ros::Rate loop_rate(rate);
     
   fb->initPose(*startPose);
+  while (ros(ok) && (!fb->isLocalized())) {
+    fb->stopRobotAStar();
+    ros::spinOnce();
+    loop_rate.sleep();
+  }
   fb->setWallFollower(false);
   fb->openDoor();
   fb->startTimer(explorationTimeout);
