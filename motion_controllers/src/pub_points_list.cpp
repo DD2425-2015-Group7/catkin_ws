@@ -110,11 +110,15 @@ int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "pub_points_list");
     ros::NodeHandle handle;
+    
+    handle.param<double>("distance_tolerance_high", closeEnough, 0.05);
 
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("/odom",1000,calculatePosition);
     ros::Publisher pub_pose_obj = handle.advertise<geometry_msgs::Pose>("/path_pose", 1000);
 
     ros::ServiceServer getPathPoints_server = handle.advertiseService("/motion_controllers/PathPointsExec", GetPathPoints);
+    
+    
 
     pub_pose = &pub_pose_obj;
 
