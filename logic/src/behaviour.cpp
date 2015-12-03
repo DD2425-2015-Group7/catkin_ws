@@ -1,7 +1,7 @@
 #include "logic/FunctionBlocks.h"
 
 int safetyTime = 20; 
-const int explorationTimeout = 300, fetchingTimeout = 180;
+const int explorationTimeout = 300/*300*/, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
 const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
@@ -35,17 +35,16 @@ void getOut(void)
     const int rate = 5;
     ros::Rate loop_rate(rate);
     
-    while (ros::ok())
-	{
-        fb->go2goal(*startPose);
-        if(fb->poseReached(*startPose, radiusTolerance, yawTolerance)){
-            fb->speak("Hooray! I have done it! Applause, please!");
-            return;
-        }
-		ros::spinOnce();
-		loop_rate.sleep();
-	}
-    
+    ROS_INFO("Getting out !");
+    fb->go2goal(*startPose); 
+    while (ros::ok()) {
+      if(fb->poseReached(*startPose, radiusTolerance, yawTolerance)){
+	fb->speak("Hooray! I have done it! Applause, please!");
+	return;
+      }
+      ros::spinOnce();
+      loop_rate.sleep();
+    }
 }
 
 void explore(void)
@@ -60,6 +59,7 @@ void explore(void)
   fb->setWallFollower(false);
   fb->openDoor();
   fb->startTimer(explorationTimeout);
+
   do{
     if(!goalSet){
       goal = fb->exploreNext();
@@ -70,10 +70,16 @@ void explore(void)
       goalSet = false;
     }
     if(fb->objectDetected()){
+      ROS_INFO("111111111111111111111111111111111111111111111111111111");
       fb->stopRobotAStar();
       objectArray = fb->processObject();
-      fb->add2map(objectArray);
+      ROS_INFO("222222222222222222222222222222222222222222222222222222");   
+      //      fb->add2map(objectArray);
+      ROS_INFO("333333333333333333333333333333333333333333333333333333");   
       fb->sendEvidence(objectArray);
+      ROS_INFO("444444444444444444444444444444444444444444444444444444");   
+      fb->go2goal(goal);
+      ROS_INFO("555555555555555555555555555555555555555555555555555555");   
     }
     if(!fb->isLocalized()){
       fb->stopRobotAStar();
@@ -105,7 +111,7 @@ void exploreWall(void)
       fb->sendEvidence(objectArray);
       fb->setWallFollower(true);
     } else {
-      ROS_INFO("Rien");
+      ROS_INFO("Nothing");
     }
     ros::spinOnce();
     loop_rate.sleep();

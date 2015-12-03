@@ -22,6 +22,14 @@ using std::vector;
 
 double cell_size;
 
+
+double goalOx;
+double goalOy;
+double goalOz;
+double goalOw;
+
+
+
 int turnningCost = 300;
 
 int G_OFFSET_4 = 1;
@@ -122,14 +130,13 @@ public:
 
   int oValue(Node current)
   {
-    // As for the toal f value, the smaller, the better, while the obstacle of distance should be the larger the better, so I reverse this value
-    int o = (50 - (map->data[current.row*map->info.width + current.col]));
-    assert(o >= 0);
-    assert(o <= 50);
-    o = o * 10;
-    //int o = - map->data[current.row*map->info.width + current.col];
-    //double o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
-    //std::cout<< "O value is  : "<< o << std::endl;
+    int dist = map->data[current.row*map->info.width + current.col];
+    int o;
+    if(dist < 20){
+        o = 50;
+    }else{
+        o = 0;
+    }
     return o;
   }
 
@@ -313,9 +320,6 @@ public:
   //if the position of start or goal is invalid, then we return TRUE
   bool inValid(Node start, Node goal)
   {
-    //std::cout << "Start Row & Col is : "<< start.row <<" & "<<start.col<<std::endl;
-    //std::cout << "Goal Row & Col is : "<< goal.row <<" & "<<goal.col<<std::endl;
-    //std::cout << "Map Height & Width is : "<< map->info.width <<" & "<<map->info.height<<std::endl;
     if(start.row >= map->info.height || start.col >= map->info.width ||
        goal.row >= map->info.height || goal.col >= map->info.width ||
        !isCanMove(start.row,start.col) || !isCanMove(goal.row,goal.col))
@@ -333,19 +337,23 @@ public:
     //if this two point is invalid, then break
     if(inValid(*start,*goal))
       {
-	ROS_INFO("Start or Goal is not valid");
-	nav_msgs::Path nu;
-       
-	geometry_msgs::PoseStamped p;
-	p.pose.position.x = start->col * cell_size;
-	p.pose.position.y = start->row * cell_size;
-	p.pose.orientation.x = 0;
-	p.pose.orientation.y = 0;
-	p.pose.orientation.z = 0;
-	p.pose.orientation.w = 1;
-	nu.poses.push_back(p);
+        ROS_INFO("Start or Goal is not valid");
+        nav_msgs::Path nu;
 
-	return nu;
+        geometry_msgs::PoseStamped p;
+        p.pose.position.x = start->col * cell_size;
+        p.pose.position.y = start->row * cell_size;
+        p.pose.orientation.x = 0;
+        p.pose.orientation.y = 0;
+        p.pose.orientation.z = 0;
+        p.pose.orientation.w = 1;
+
+        nu.poses.push_back(p);
+
+        nu.header.stamp = ros::Time::now();
+        nu.header.frame_id = "/map";
+
+        return nu;
       }
       if(start->col == goal->col && start->row == goal->row){
           nav_msgs::Path nu;
@@ -359,6 +367,10 @@ public:
         p.pose.orientation.w = 1;
         nu.poses.push_back(p);
         nu.poses.push_back(p);
+
+        nu.header.stamp = ros::Time::now();
+        nu.header.frame_id = "/map";
+
         return nu;
       }
         
@@ -451,14 +463,14 @@ public:
     nav_msgs::Path finalPath;
 
     //path.push_back(current);
-    std::cout<<"Reconstruct Starts "<<std::endl;
+    //std::cout<<"Reconstruct Starts "<<std::endl;
     while(current.parent >= 0 )
       {
 	path.push_back(closeSet.at(current.parent));
 	current = closeSet.at(current.parent);
 	//std::cout << "Parent's Point Positionv is : ( "<< current.row << " , "<< current.col << " )"<<std::endl;
       }
-    std::cout<<"Reconstruct Ends "<<std::endl;
+    //std::cout<<"Reconstruct Ends "<<std::endl;
 
     // Should this be just larger than 0 or it could equal 0
     for(int i = path.size() - 1; i >= 0; i--)
@@ -480,8 +492,9 @@ public:
 
     finalPath.header.stamp = ros::Time::now();
     finalPath.header.frame_id = "/map";
-    /*
+
       std::cout<<"Original Path Size is: "<< finalPath.poses.size()<<std::endl;
+          /*
       //Show the Original path
 
       for(int i = 0; i < finalPath.poses.size(); i++)
@@ -526,7 +539,7 @@ public:
 	  {
 	    if(path.poses.at(i).pose.position.x != path.poses.at(j).pose.position.x )
 	      {
-		//ROS_INFO("X value changes");
+        //ROS_INFO("Y value changes");
 		geometry_msgs::PoseStamped p;
 		p.pose.position.x = path.poses.at(i).pose.position.x;
 		p.pose.position.y = path.poses.at(i).pose.position.y;
@@ -544,16 +557,20 @@ public:
     geometry_msgs::PoseStamped p;
     p.pose.position.x = goal->col * cell_size;
     p.pose.position.y = goal->row * cell_size;
-    p.pose.orientation.x = 0;
-    p.pose.orientation.y = 0;
-    p.pose.orientation.z = 0;
-    p.pose.orientation.w = 1;
+    p.pose.orientation.x = goalOx;
+    p.pose.orientation.y = goalOy;
+    p.pose.orientation.z = goalOz;
+    p.pose.orientation.w = goalOw;
     newPath.poses.push_back(p);
 
     //Show the new path(corner Point)
-    //std::cout<<"Simple Path Size is: "<< newPath.poses.size()<<std::endl;
+    std::cout<<"Simple Path Size is: "<< newPath.poses.size()<<std::endl;
     //std::cout<<"Simple Path Last point : "<< newPath.poses.back().pose.position.x<< " " <<newPath.poses.back().pose.position.y<<std::endl;
 
+//    for(int i = 0; i < newPath.poses.size(); i++)
+//    {
+//        std::cout<< "Simple Path No." << i <<" point is X: "<< newPath.poses.at(i).pose.position.x << " Y :" << newPath.poses.at(i).pose.position.y << std::endl;
+//    }
 
     /*
       nav_msgs::Path finalPath;
@@ -635,16 +652,21 @@ public:
 };
 
 
-
-
-
 nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 {
+
   std::cout<<  "msg.position.x: " <<  msg.position.x  << std::endl;
   std::cout<<  "msg.position.y: " <<  msg.position.y  << std::endl;
   //The Pose msg is in meters, so multiply this by 100
   int goalCol = msg.position.x / cell_size;
   int goalRow = msg.position.y / cell_size;
+  goalOx = msg.orientation.x;
+  goalOy = msg.orientation.y;
+  goalOz = msg.orientation.z;
+  goalOw = msg.orientation.w;
+
+
+
   std::cout<<  "GoalCol: " << goalCol  << " GoalRow: " << goalRow << std::endl;
   std::string TargetFrameName = "/map";
   std::string CurrentFrame = "/base_link";
@@ -679,6 +701,27 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 
   std::cout<<  "startCol: " << startCol  << " startRow: " << startRow << std::endl;
 
+    if (
+      (msg.position.x == -1) &&
+      (msg.position.y == -1.0) &&
+      (msg.position.z == -1.0) &&
+      (msg.orientation.x == -1.0) &&
+      (msg.orientation.y == -1.0) &&
+      (msg.orientation.z == -1.0) &&
+      (msg.orientation.w == -1.0) 
+      ) {
+
+    nav_msgs::Path empty;
+    
+    empty.poses.push_back(startPose);
+    
+    empty.header.stamp = ros::Time::now();
+    empty.header.frame_id = "/map";
+
+    return empty;
+  }
+
+
   Node start(startRow,startCol,-1);
   Node goal(goalRow,goalCol,-1);
 
@@ -707,17 +750,14 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "Astar");
   ros::NodeHandle handle;
 
-  // function for calculate the Current Position: baselink (0.0) to the map frame (TF)
-  //ros::Subscriber path_sub_goal = handle.subscribe<geometry_msgs::Pose>("/goalPosition",1000,setGoalPosition);
-
   //Set map;
   map = new nav_msgs::OccupancyGrid();
   //explored = new nav_msgs::OccupancyGrid();
   map->info.height = 0;
   map->info.width = 0;
 
-  //ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
-  //ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Astar/Simplepath",10);
+  ros::Publisher path_pub = handle.advertise<nav_msgs::Path>("/Astar/path",10);
+  ros::Publisher path_pub_simple = handle.advertise<nav_msgs::Path>("/Astar/Simplepath",10);
   //ros::Publisher explored_pub = handle.advertise<nav_msgs::OccupancyGrid>("/Astar/explored",1);
 
 
@@ -737,7 +777,7 @@ int main(int argc, char **argv)
 
   tf_listener = new tf::TransformListener();
 
-  /*
+    /*
     int StartRow = 23;//211;//138;//25;//92;//20;
     int StartCol = 205;//195;//220;//195;//200;//38;//193;//20;
     // row & col : start -> 211,195  || goal : 73,186
@@ -753,22 +793,20 @@ int main(int argc, char **argv)
     Node goal3(70, 50, -1);
     Node goal4(70, 110, -1);
 
+    Node start5(20,20,-1);
+    Node goal5(20,25,-1);
     Node start(StartRow, StartCol, -1);
     Node goal(GoalRow,GoalCol, -1);
     
-    start = start2;
-    goal = goal3;
+    start = start5;
+    goal = start5;
     
-
-
     PathFinder pf(start,goal);
-
-
 
     nav_msgs::Path path;
     nav_msgs::Path simpilifiedPath;
 
-  */
+    */
 
   ros::Rate loop_rate(2);
 
@@ -776,7 +814,7 @@ int main(int argc, char **argv)
     {
       updateMap();
         
-      /*
+        /*
         if(map->data.size() < 1000)
         {
 	ROS_INFO("Map is not yet intialized");
@@ -784,9 +822,8 @@ int main(int argc, char **argv)
         else
         {
 	ROS_INFO("Planning a path...");
-	*explored = *map;
+    //*explored = *map;
 	path = pf.getPath();
-	//std::cout<<"path size : "<<path.poses.size()<<std::endl;
 
 	if(path.poses.size() > 0)
 	{
@@ -794,9 +831,9 @@ int main(int argc, char **argv)
 	}
 	path_pub_simple.publish(simpilifiedPath);
 	path_pub.publish(path);
-	explored_pub.publish(*explored);
+    //explored_pub.publish(*explored);
         }
-      */
+    */
         
       ros::spinOnce();
       loop_rate.sleep();

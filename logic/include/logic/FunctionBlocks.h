@@ -80,6 +80,7 @@ class FunctionBlocks
         void initPose(geometry_msgs::Pose&);
         void initUnknown(void);
         void testMclInit(void);
+        void mclCB(const std_msgs::Bool::ConstPtr& msg);
         bool isLocalized(void);
         void objects2localize(classification::ClassifiedObjectArray &);
         
@@ -92,6 +93,7 @@ class FunctionBlocks
         
         double mapXsz, mapYsz;
         int minOccupied;
+        bool mclReady, mclLocalized;
         
         nav_msgs::OccupancyGrid *mapInflated;
         ros::ServiceClient *map_client, *add_objects_client, *getPath_client, *getPathPoints_client;;
@@ -99,6 +101,7 @@ class FunctionBlocks
 	ros::Publisher *espeak_pub;
 	ros::Subscriber *vision_sub;
 	ros::Subscriber *odom_sub;
+    ros::Subscriber *mcl_sub;
 	ros::Publisher *wallfol_pub;
 	ros::Publisher *evidence_pub;
 	ros::Publisher *twist_pub;

@@ -49,11 +49,15 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *getPath_client = n.serviceClient<path_planning::GetPath>("/Astar/pathTest");
 
     getPathPoints_client = new ros::ServiceClient();
-    *getPathPoints_client = n.serviceClient<motion_controllers::GetPathPoints>("/motion_controllers/PathPointsExec");
+    *getPathPoints_client = n.serviceClient<motion_controllers::GetPathPoints>("/motion_controllers/PathPointsExec", false);
 
+    mclReady = false;
+    mclLocalized = false;
+    
     espeak_pub = new ros::Publisher();;
     vision_sub = new ros::Subscriber();
     odom_sub = new ros::Subscriber();
+    mcl_sub = new ros::Subscriber();
     wallfol_pub = new ros::Publisher();
     evidence_pub = new ros::Publisher();
     twist_pub = new ros::Publisher();
@@ -61,6 +65,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
     *vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000, &FunctionBlocks::visionCB, this);
     *odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 1000, &FunctionBlocks::odomCB, this);
+    *mcl_sub = n.subscribe<std_msgs::Bool>("/mcl/is_localized", 1, &FunctionBlocks::mclCB, this);
     *wallfol_pub = n.advertise<std_msgs::Bool>("/wallFollower", 1000);
     *evidence_pub = n.advertise<ras_msgs::RAS_Evidence>("/evidence", 1000);
     *twist_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
@@ -95,6 +100,11 @@ void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::Const
   for (int i=0; i < msg->objects.size(); i++) {
     objectsVision->objects.push_back(msg->objects[i]);
   }
+}
+
+void FunctionBlocks::mclCB(const std_msgs::Bool::ConstPtr& msg) {
+  mclReady = true;
+  mclLocalized = msg->data;
 }
 
 void FunctionBlocks::odomCB(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -347,7 +357,7 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 1;
+  int threshold_vision = 5;
 
   if (objDetectTimeout > 24) {
     ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
@@ -518,6 +528,7 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 
 void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
+
   nav_msgs::Path path =  getPath(p);
 
   motion_controllers::GetPathPoints srv;
@@ -685,7 +696,9 @@ void FunctionBlocks::testMclInit(void)
 
 bool FunctionBlocks::isLocalized(void)
 {
-    return true;
+    if(!mclReady)
+        return false;
+    return mclLocalized;
 }
 
 void FunctionBlocks::objects2localize(classification::ClassifiedObjectArray &)
@@ -710,4 +723,5 @@ void FunctionBlocks::stopRobotAStar(void)
   stop.orientation.w = -1.0;
   
   go2goal(stop);
+
 }
