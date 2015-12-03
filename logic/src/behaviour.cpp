@@ -1,7 +1,7 @@
 #include "logic/FunctionBlocks.h"
 
 int safetyTime = 20; 
-const int explorationTimeout = 90/*300*/, fetchingTimeout = 180;
+const int explorationTimeout = 40/*300*/, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
 const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
@@ -35,17 +35,15 @@ void getOut(void)
     const int rate = 5;
     ros::Rate loop_rate(rate);
     
-    while (ros::ok())
-	{
-        fb->go2goal(*startPose);
-        if(fb->poseReached(*startPose, radiusTolerance, yawTolerance)){
-            fb->speak("Hooray! I have done it! Applause, please!");
-            return;
-        }
-		ros::spinOnce();
-		loop_rate.sleep();
-	}
-    
+    fb->go2goal(*startPose); 
+    while (ros::ok()) {
+      if(fb->poseReached(*startPose, radiusTolerance, yawTolerance)){
+	fb->speak("Hooray! I have done it! Applause, please!");
+	return;
+      }
+      ros::spinOnce();
+      loop_rate.sleep();
+    }
 }
 
 void explore(void)
@@ -60,6 +58,7 @@ void explore(void)
   fb->setWallFollower(false);
   fb->openDoor();
   fb->startTimer(explorationTimeout);
+
   do{
     if(!goalSet){
       goal = fb->exploreNext();
@@ -74,6 +73,7 @@ void explore(void)
       objectArray = fb->processObject();
       fb->add2map(objectArray);
       fb->sendEvidence(objectArray);
+      fb->go2goal(goal);
     }
     if(!fb->isLocalized()){
       fb->stopRobotAStar();
@@ -82,7 +82,6 @@ void explore(void)
     ros::spinOnce();
     loop_rate.sleep();
   } while( (ros::ok()) && (safetyTime + fb->time2goal(*startPose) < fb->secondsLeft()) );
-  fb->stopRobotAStar();
   getOut();
 }
 
@@ -106,7 +105,7 @@ void exploreWall(void)
       fb->sendEvidence(objectArray);
       fb->setWallFollower(true);
     } else {
-      ROS_INFO("Rien");
+      ROS_INFO("Nothing");
     }
     ros::spinOnce();
     loop_rate.sleep();

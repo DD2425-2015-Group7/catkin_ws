@@ -711,4 +711,5 @@ void FunctionBlocks::stopRobotAStar(void)
   stop.orientation.w = -1.0;
   
   go2goal(stop);
+
 }
