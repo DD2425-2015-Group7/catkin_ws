@@ -224,7 +224,7 @@ public:
 
             std::vector<pcl::PointIndices> cluster_indices;
             pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
-            ec.setClusterTolerance (0.008); // 1cm
+            ec.setClusterTolerance (0.01); // 1cm
             ec.setMinClusterSize (100);
             ec.setMaxClusterSize (400);
             ec.setSearchMethod (tree);
@@ -350,7 +350,7 @@ public:
                         }
                     }
                     std::cerr<<"color: "<< color<<std::endl;
-                    if(color != "white"){
+                    if(color == "red"||color == "green"||color=="blue"||color=="orange"||color="yellow"||color="purple"){
 
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;
