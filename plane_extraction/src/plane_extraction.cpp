@@ -350,7 +350,7 @@ public:
                         }
                     }
                     std::cerr<<"color: "<< color<<std::endl;
-                    if(color == "red"||color == "green"||color=="blue"||color=="orange"||color="yellow"||color="purple"){
+                    if(color == "red"||color == "green"||color=="blue"||color=="orange"||color=="yellow"||color=="purple"){
 
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;
