@@ -169,6 +169,7 @@ void MapStorage::stackWall(double x0, double y0, double x1, double y1, double th
         yMax = y0;
     if(y1 > yMax)
         yMax = y1;
+    assert(x0>=0 && y0>=0 && x1>=0 && y1>=0);
     wallSt.push_back(MapStorage::Wall(x0,y0,x1,y1,thickness));
 }
 
@@ -182,6 +183,7 @@ void MapStorage::stackLine(double x0, double y0, double x1, double y1, double th
         yMax = y0;
     if(y1 > yMax)
         yMax = y1;
+    assert(x0>=0 && y0>=0 && x1>=0 && y1>=0);
     lineSt.push_back(MapStorage::Wall(x0,y0,x1,y1,thickness));
 }
 
@@ -192,6 +194,7 @@ void MapStorage::clearLines(void)
 
 void MapStorage::stackEllipse(double x, double y, double a, double b, double th)
 {
+    assert(x>=0 && y>=0);
     ellipseSt.push_back(MapStorage::Ellipse(x,y,a,b,th));
 }
 
@@ -210,6 +213,7 @@ void MapStorage::renderGrid(void)
     assert(hc > 0);
     map->info.width = wc;
     map->info.height = hc;
+    assert(wc*hc < 1000000000);
     map->data.resize(wc*hc);
     *distMap = *map;
     *inflMap = *map;
