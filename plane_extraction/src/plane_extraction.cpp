@@ -69,7 +69,7 @@ public:
 
         //std::cerr << "before callback " << std::endl;
         sync.registerCallback(boost::bind(&Plane_Extraction::cloud_callback,this, _1, _2));
-        ros::Rate loop_rate(5);
+        ros::Rate loop_rate(15);
 
         ros::spin ();
         loop_rate.sleep();
@@ -102,13 +102,23 @@ public:
         filterx.setFilterFieldName("x");
         pcl::PointCloud<pcl::PointXYZRGB> cloud;
         cloud = *input;
-        float ymin1 = -0.05;
-        float ymax1 = 0.12;
+        float ymin1 = -0.1;
+        float ymax1 = 0.06; //0.12
+        float xmin1 = -0.16;
+        float xmax1 = 0.16;
         filtery.setFilterFieldName("y");
         filtery.setFilterLimitsNegative (false);
         filtery.setInputCloud(input);
 
         filtery.setFilterLimits(ymin1,ymax1);
+
+        filtery.filter(*smaller_cloud);
+
+        filtery.setFilterFieldName("x");
+        filtery.setFilterLimitsNegative (false);
+        filtery.setInputCloud(smaller_cloud);
+
+        filtery.setFilterLimits(xmin1,xmax1);
 
         filtery.filter(*output);
 
@@ -173,7 +183,7 @@ public:
 
         int i = 0, nr_points = (int)cloud_filtered->points.size();
         // While 30% of the original cloud is still there
-        while (cloud_filtered->points.size() > 0.08 * nr_points)
+        while (cloud_filtered->points.size() > 0.1 * nr_points)
         {
            // std::cerr << "Entered Plane While "<< std::endl;
 
@@ -229,6 +239,7 @@ public:
                 int j = 0;
                 plane_extraction::BoundingBox_FloatArray bbox_array_msg;
                 geometry_msgs::PolygonStamped point_array;
+                 //std::cerr << "==========================New Set====================================" << std::endl;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
                 {
                     std::cerr << "==========================New Cluster====================================" << std::endl;
@@ -286,16 +297,16 @@ public:
 
                     }
 
-                    std::cerr << "max: " << max << std::endl;
-                    std::cerr << "index: " << index << std::endl;
+                    //std::cerr << "max: " << max << std::endl;
+                    //std::cerr << "index: " << index << std::endl;
                     if(RGB > 230){
                         color = "white";
                     }else if(RGB < 50){
                         color = "black";
                         isObject = 7;
-                    }else if(RGB < 75){
+                    }else if(RGB < 75 || cloud_cluster->size()>300){
                         color = "gray";
-                        if(cloud_cluster->points.size()>500){
+                        if(cloud_cluster->points.size()<350){
                             isObject = 9;
                         }else if(cloud_cluster->points.size() > 350){
                             isObject = 8;
@@ -338,7 +349,7 @@ public:
 
                         }
                     }
-
+                    std::cerr<<"color: "<< color<<std::endl;
                     if(color != "white"){
 
                         Eigen::Vector4f centroid;
@@ -355,7 +366,7 @@ public:
                                   << centroid[0] << ", "
                                   << centroid[1] << ", "
                                   << centroid[2] << ")." << std::endl;*/
-                            std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+                            std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
 
 
 
@@ -430,7 +441,7 @@ public:
                                 pkt.z = centroid[1];
 
                                 pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x));
-
+                               std::cerr << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
 
 
                                 //what to publish: bounding box : bb message,< publishes in the same msg. done
@@ -457,7 +468,7 @@ public:
                 //i_to_pub.header = point_array.header;
                 i_pub.publish(i_to_pub);
                 bb_publish.publish(bbox_array_msg);
-                std::cout <<"number of clusters " << j << std::endl;
+                //std::cout <<"number of clusters " << j << std::endl;
             }
         }
         // }
