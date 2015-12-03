@@ -130,14 +130,13 @@ public:
 
   int oValue(Node current)
   {
-    // As for the toal f value, the smaller, the better, while the obstacle of distance should be the larger the better, so I reverse this value
-    int o = (50 - (map->data[current.row*map->info.width + current.col]));
-    assert(o >= 0);
-    assert(o <= 50);
-    o = o * 10;
-    //int o = - map->data[current.row*map->info.width + current.col];
-    //double o = (50 - (map->data[current.row*map->info.width + current.col]))/5;
-    //std::cout<< "O value is  : "<< o << std::endl;
+    int dist = map->data[current.row*map->info.width + current.col];
+    int o;
+    if(dist < 20){
+        o = 50;
+    }else{
+        o = 0;
+    }
     return o;
   }
 
