@@ -213,7 +213,7 @@ void MapStorage::renderGrid(void)
     assert(hc > 0);
     map->info.width = wc;
     map->info.height = hc;
-    assert(wc*hc < 1000000000);
+    assert(wc*hc < 100000000);
     map->data.resize(wc*hc);
     *distMap = *map;
     *inflMap = *map;
