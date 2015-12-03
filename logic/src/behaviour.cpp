@@ -56,7 +56,7 @@ void explore(void)
   ros::Rate loop_rate(rate);
     
   fb->initPose(*startPose);
-  while (ros(ok) && (!fb->isLocalized())) {
+  while (ros::ok() && (!fb->isLocalized())) {
     fb->stopRobotAStar();
     ros::spinOnce();
     loop_rate.sleep();
