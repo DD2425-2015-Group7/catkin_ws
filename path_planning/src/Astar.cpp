@@ -656,20 +656,6 @@ public:
 nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
 {
 
-  if (
-      (msg.position.x == -1) &&
-      (msg.position.y == -1.0) &&
-      (msg.position.z == -1.0) &&
-      (msg.orientation.x == -1.0) &&
-      (msg.orientation.y == -1.0) &&
-      (msg.orientation.z == -1.0) &&
-      (msg.orientation.w == -1.0) 
-      ) {
-    nav_msgs::Path empty; 
-    return empty;
-  }
-
-
   std::cout<<  "msg.position.x: " <<  msg.position.x  << std::endl;
   std::cout<<  "msg.position.y: " <<  msg.position.y  << std::endl;
   //The Pose msg is in meters, so multiply this by 100
@@ -715,6 +701,27 @@ nav_msgs::Path servicePath(geometry_msgs::Pose &msg)
   int startRow = startPose.pose.position.y / cell_size;
 
   std::cout<<  "startCol: " << startCol  << " startRow: " << startRow << std::endl;
+
+    if (
+      (msg.position.x == -1) &&
+      (msg.position.y == -1.0) &&
+      (msg.position.z == -1.0) &&
+      (msg.orientation.x == -1.0) &&
+      (msg.orientation.y == -1.0) &&
+      (msg.orientation.z == -1.0) &&
+      (msg.orientation.w == -1.0) 
+      ) {
+
+    nav_msgs::Path empty;
+    
+    empty.poses.push_back(startPose);
+    
+    empty.header.stamp = ros::Time::now();
+    empty.header.frame_id = "/map";
+
+    return empty;
+  }
+
 
   Node start(startRow,startCol,-1);
   Node goal(goalRow,goalCol,-1);
