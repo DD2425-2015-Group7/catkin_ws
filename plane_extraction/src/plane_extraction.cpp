@@ -69,7 +69,7 @@ public:
 
         //std::cerr << "before callback " << std::endl;
         sync.registerCallback(boost::bind(&Plane_Extraction::cloud_callback,this, _1, _2));
-        ros::Rate loop_rate(15);
+        ros::Rate loop_rate(5);
 
         ros::spin ();
         loop_rate.sleep();
@@ -211,10 +211,10 @@ public:
             *cloud_filtered = *cloud_f;
         }
         //std::cerr << "Between IFS" << std::endl;
-        sensor_msgs::PointCloud2 out;
+        // sensor_msgs::PointCloud2 out;
 
-        pcl::toROSMsg(*cloud_filtered, out);
-        c_pub.publish(out);
+        // pcl::toROSMsg(*cloud_filtered, out);
+        // c_pub.publish(out);
 
 
         if(cloud_filtered->width*cloud_filtered->height != 0 ){

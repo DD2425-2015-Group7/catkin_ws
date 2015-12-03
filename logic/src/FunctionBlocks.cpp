@@ -357,7 +357,7 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 15;
+  int threshold_vision = 5;
 
   if (objDetectTimeout > 24) {
     ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
