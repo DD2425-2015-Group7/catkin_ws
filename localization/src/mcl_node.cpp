@@ -1,6 +1,7 @@
 #include "math.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
 #include "nav_msgs/Odometry.h"
@@ -282,7 +283,7 @@ int main(int argc, char **argv)
     
     int nParticles, mcl_rate;
     double minDelta, aslow, afast;
-    double crashRadius, crashYaw, stdXY, stdYaw;
+    double crashRadius, crashYaw, stdXY, stdYaw, locStdXY, locStdYaw;
     n.param<int>("mcl_particles", nParticles, 200);
     n.param<int>("mcl_rate", mcl_rate, 5);
     n.param<double>("mcl_init_cone_radius", initConeRadius, 0.2);
@@ -294,6 +295,8 @@ int main(int argc, char **argv)
     n.param<double>("mcl_crash_yaw", crashYaw, 0.2);
     n.param<double>("mcl_good_std_xy", stdXY, 0.1);
     n.param<double>("mcl_good_std_yaw", stdYaw, 0.6);
+    n.param<double>("mcl_localized_std_xy", locStdXY, 0.1);
+    n.param<double>("mcl_localized_std_yaw", locStdYaw, 0.6);
 
     tf::TransformBroadcaster broadcaster_obj;
     tf_broadcaster = &broadcaster_obj;
@@ -306,6 +309,7 @@ int main(int argc, char **argv)
     sync.registerCallback(boost::bind(&odomRangeUpdate, _1, _2));
     
     ros::Publisher particle_pub_obj = n.advertise<geometry_msgs::PoseArray>("/mcl/particles", 5);
+    ros::Publisher localized_pub = n.advertise<std_msgs::Bool>("/mcl/is_localized", 5);
     geometry_msgs::PoseArray poseArray;
     poseArray.header.frame_id = mapFrame;
     
@@ -323,9 +327,11 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    struct PoseState pose, goodStd;
+    struct PoseState pose, goodStd, locStd;
     goodStd.set(stdXY);
     goodStd.yaw = stdYaw;
+    locStd.set(locStdXY);
+    locStd.yaw = locStdYaw;
     pose.set(0.0);
     pose.x += coords.x0;
     pose.y += coords.y0;
@@ -348,6 +354,7 @@ int main(int argc, char **argv)
     double hc = ((double)mapInflated->info.height);
     assert(csz > 0.00001);
     mc->init(pose, initConeRadius, initYawVar, wc*csz, hc*csz);
+    //mc->init(wc*csz, hc*csz);
     mclEnabled = true;
 
     current_time = ros::Time::now();
@@ -383,7 +390,14 @@ int main(int argc, char **argv)
                 if(std::sqrt(dx*dx + dy*dy) > 0.05/(double)mcl_rate)
                     odom2map = mclTransform();
             }
-            
+            std_msgs::Bool isLocalized;
+            struct PoseState std = mc->getStd();
+            if(std.x > locStd.x || std.y > locStd.y || std.yaw > locStd.yaw){
+                isLocalized.data = false;
+            }else{
+                isLocalized.data = true;
+            }
+            localized_pub.publish(isLocalized);
             
             counter = 0;
         }
