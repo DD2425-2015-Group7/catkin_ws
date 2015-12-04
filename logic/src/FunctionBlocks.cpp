@@ -828,7 +828,7 @@ void FunctionBlocks::reportState(std::string text, int verbose)
 {
     std::string head = "Behaviour: ";
     
-    if(verbose>1){
+    if(verbose>2){
         ROS_INFO("%s", (head + text).c_str());
         return;
     }

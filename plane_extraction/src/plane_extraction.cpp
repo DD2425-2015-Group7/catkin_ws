@@ -192,7 +192,7 @@ public:
             seg.segment(*inliers, *coefficients);
             if (inliers->indices.size() == 0)
             {
-                std::cerr << "Could not estimate a planar mode   l for the given dataset." << std::endl;
+                std::cout << "Could not estimate a planar mode   l for the given dataset." << std::endl;
                 break;
             }
 
@@ -234,7 +234,7 @@ public:
             //find objects and put them in a new separate point cloud. only takes the objects that consist of 900-3000 particles
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
             if(cluster_indices.begin() == cluster_indices.end()){
-                std::cerr << "samma" << std::endl;
+                std::cout << "samma" << std::endl;
             }else{
                 int j = 0;
                 plane_extraction::BoundingBox_FloatArray bbox_array_msg;
@@ -242,7 +242,7 @@ public:
                  //std::cerr << "==========================New Set====================================" << std::endl;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
                 {
-                    std::cerr << "==========================New Cluster====================================" << std::endl;
+                    std::cout << "==========================New Cluster====================================" << std::endl;
                     //uncomment this and comment the previous declaration if you only want the "newest" object to be found
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -349,7 +349,7 @@ public:
 
                         }
                     }
-                    std::cerr<<"color: "<< color<<std::endl;
+                    std::cout<<"color: "<< color<<std::endl;
                     if(color == "red"||color == "green"||color=="blue"||color=="orange"||color=="yellow"||color=="purple"){
 
                         Eigen::Vector4f centroid;
@@ -366,7 +366,7 @@ public:
                                   << centroid[0] << ", "
                                   << centroid[1] << ", "
                                   << centroid[2] << ")." << std::endl;*/
-                            std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+                            std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
 
 
 
@@ -441,7 +441,7 @@ public:
                                 pkt.z = centroid[1];
 
                                 pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x));
-                               std::cerr << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
+                               std::cout << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
 
 
                                 //what to publish: bounding box : bb message,< publishes in the same msg. done
