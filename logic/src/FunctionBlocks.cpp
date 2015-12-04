@@ -182,8 +182,10 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
+  ROS_INFO("Let's turn !");
   this->turn(angle);
-  
+  ROS_INFO("Turn OK!");
+
   // We reset the Array
   objectsVision->objects.clear();
 
@@ -191,7 +193,6 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   
   verifiedObjects.header.frame_id = objectsVision->header.frame_id;
 
-  ROS_INFO("Turn process OK");
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int time2wait = 2; // in seconds
@@ -249,35 +250,37 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 				  }}
 			    );
       } else {
-	//Average of the point
-	objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
-	objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
-	objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
-	//Average of the second debris point
-	objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
-	objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
-	objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
-	//Average of the bounding box
-	objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
-	objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
-	objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
-	objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
-	// The other attributes of tege ClassifiedObject can be taken from any object of the array
+	//TEST//Don't do anything
+
+	// //Average of the point
+	// objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
+	// objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
+	// objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
+	// //Average of the second debris point
+	// objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
+	// objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
+	// objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
+	// //Average of the bounding box
+	// objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
+	// objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
+	// objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
+	// objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
+	// // The other attributes of the ClassifiedObject can be taken from any object of the array
 
       }
     }
   }
 
-  for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
-    objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
-    objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
-    objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
+  // for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
+  //   objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
+  //   objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
+  //   objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
       
-    objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
-    objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
-    objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
-    objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
-  }
+  //   objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
+  //   objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
+  //   objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
+  //   objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
+  // }
   
 
   // We reset the Array
@@ -293,8 +296,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 }
 
 void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
-{
-    
+{   
 }
 
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
