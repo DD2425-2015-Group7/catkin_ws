@@ -7,6 +7,9 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     n.param<int>("map_occupied_min_threshold", this->minOccupied, 10);
     init_mcl_pub = new ros::Publisher();
     *init_mcl_pub = n.advertise<geometry_msgs::Pose>("/mcl/initial_pose", 2, true); //use latch
+    
+    n.param<std::string>("map_frame", MapFrameName, "map"); 
+    n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
 
     //Wait 8 s for the map service.
     if(!ros::service::waitForService("/map_node/get_map", 8000)){ 
@@ -55,7 +58,10 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     mclLocalized = false;
     
     all_markers = new visualization_msgs::MarkerArray();
+    currentPath = new nav_msgs::Path();
+    currentPath->header.frame_id = MapFrameName;
     
+    path_pub = new ros::Publisher();
     state_marker_pub = new ros::Publisher();
     espeak_pub = new ros::Publisher();
     vision_sub = new ros::Subscriber();
@@ -65,6 +71,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     evidence_pub = new ros::Publisher();
     twist_pub = new ros::Publisher();
     goalPose_pub = new ros::Publisher();
+    *path_pub =  n.advertise<nav_msgs::Path>("/logic/path", 10);
     *state_marker_pub =  n.advertise<visualization_msgs::MarkerArray>("/logic/state", 1000);
     *espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
     *vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000, &FunctionBlocks::visionCB, this);
@@ -75,8 +82,6 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *twist_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
     *goalPose_pub = n.advertise<geometry_msgs::Pose>("/goal_pose",1000);
 
-    n.param<std::string>("map_frame", MapFrameName, "map"); 
-    n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
     
     tf_listener = new tf::TransformListener();
     
@@ -573,7 +578,9 @@ void FunctionBlocks::testPathPlanning(void)
     test_pose.orientation.y = 0;
     test_pose.orientation.z = 0;
     test_pose.orientation.w = 1;
-    std::cout << "Size of the test path: " <<  getPath(test_pose).poses.size() << std::endl;
+    nav_msgs::Path path = getPath(test_pose);
+    *currentPath = path;
+    std::cout << "Size of the test path: " <<  path.poses.size() << std::endl;
     std::cout << "Distance test path " <<  dist2goal(test_pose) << std::endl;
 }
 
@@ -620,6 +627,7 @@ void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
 
   nav_msgs::Path path =  getPath(p);
+  *currentPath = path;
 
   motion_controllers::GetPathPoints srv;
   srv.request.path = path;
@@ -857,9 +865,12 @@ void FunctionBlocks::reportState(std::string text, int verbose)
     
 }
 
+//Periodically call this publishing function to facilitate easier debugging and visualizations.
 void FunctionBlocks::publishing(void)
 {
+    // State texts, current path the robot is following.
     this->state_marker_pub->publish(*all_markers);
+    this->path_pub->publish(*currentPath);
 }
 
 void FunctionBlocks::testReporting(void)

@@ -104,8 +104,11 @@ class FunctionBlocks
         nav_msgs::OccupancyGrid *mapInflated;
         ros::ServiceClient *map_client, *add_objects_client, *getPath_client, *getPathPoints_client;;
         ros::Publisher *init_mcl_pub;
-        ros::Publisher *state_marker_pub;
+        
+        nav_msgs::Path *currentPath;
+        ros::Publisher *state_marker_pub, *path_pub;
         visualization_msgs::MarkerArray *all_markers;
+        
 	ros::Publisher *espeak_pub;
 	ros::Subscriber *vision_sub;
 	ros::Subscriber *odom_sub;

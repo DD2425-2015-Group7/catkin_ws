@@ -222,8 +222,8 @@ int main(int argc, char **argv)
     // fb->fetchNext();
     // fb->testAdd2Map();
     // fb->testTimer();
-    // fb->testPathPlanning();
-    // fb->testReporting();
+    fb->testPathPlanning();
+     fb->testReporting();
     }else if(behaviour.compare("explore_wall") == 0){
         exploreWall();
   }else{
