@@ -1,7 +1,7 @@
 #include "logic/FunctionBlocks.h"
 
 int safetyTime = 20; 
-const int explorationTimeout = 300/*300*/, fetchingTimeout = 180;
+const int explorationTimeout = 200/*300*/, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
 const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
@@ -81,6 +81,7 @@ void explore(void)
         fb->reportState("Exploration goal reached.", 2);  
       goalSet = false;
     }
+    /*
     if(fb->objectDetected()){
       fb->reportState("Exploring and object detected.", 2);  
       fb->stopRobotAStar();
@@ -91,6 +92,7 @@ void explore(void)
       fb->go2goal(goal);
       fb->reportState("Exploration continues.", 2);  
     }
+    * */
     if(!fb->isLocalized()){
       fb->stopRobotAStar();
       localize();
