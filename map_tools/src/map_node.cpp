@@ -81,24 +81,40 @@ void saveObject(classification::ClassifiedObject &co)
 bool addObjects(map_tools::AddObjects::Request  &req,
          map_tools::AddObjects::Response &res)
 {
+    ROS_INFO("map_node Adding objects....");
     for(int i = 0; i < req.array.objects.size(); i++){
         saveObject(req.array.objects[i]);
     }
+    
     mso->clearEllipses();
     mso->clearLines();
     for(int i = 0; i < clsObj->objects.size(); i++){
         if(clsObj->objects[i].name.compare("debris") == 0){
-            stackDebris(clsObj->objects[i]);
+            ROS_INFO("map_node fake info: Adding debris");
+            //stackDebris(clsObj->objects[i]);
         }else{
-            stackObject(clsObj->objects[i]);
+            ROS_INFO("map_node fake info: Adding object");
+            //stackObject(clsObj->objects[i]);
         }
     }
+    ROS_INFO("map_node rendering");
     mso->renderGrid();
     return true;
 }
 
 void publishObjects(void)
 {
+    
+    // 0 - object, 1 - red cube, 2 - red hollow cube, 3 - blue_cube,
+    // 4 - green cube, 5 - yellow_cube, 6 - yellow_ball, 7 - red_ball
+    // 8 - green_cylinder, 9 - blue_triangle, 10 - purple_cross,
+    // 11 - purple_star, 12 - orange star (patric), 13 - debris
+    // black, red cu, red cu, blue cu; green cu, yellow cu, yellow s, red s;
+    // green ci, blue ci, purple ci, purple s, orange s. 
+    // green (1,1,0), purple (1,0,1), orange (1, 0.6, 0)
+    float coloursR[13] = {0.0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1};
+    float coloursG[13] = {0.8, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0.6};
+    float coloursB[13] = {0.8, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0};
     visualization_msgs::MarkerArray all_markers;
     visualization_msgs::Marker obj_marker;
     obj_marker.header.frame_id = mapFrame;
@@ -116,17 +132,25 @@ void publishObjects(void)
     obj_marker.pose.position.z = 0.05;
     
     for(int i = 0; i < clsObj->objects.size(); i++){
+        int id = clsObj->objects[i].id;
         obj_marker.pose.position.x = clsObj->objects[i].p.x;
         obj_marker.pose.position.y = clsObj->objects[i].p.y;
         obj_marker.id = i;
-        if(clsObj->objects[i].name.compare("debris")){
+        obj_marker.type = visualization_msgs::Marker::CUBE;
+        if(clsObj->objects[i].name.compare("debris") == 0 || id == 13){
             obj_marker.color.r = (1.0);
             obj_marker.color.g = (1.0);
             obj_marker.color.b = (1.0);
         }else{
-            obj_marker.color.r = (255.0/255.0);
-            obj_marker.color.g = (0.0/255.0);
-            obj_marker.color.b = (0.0/255.0);
+            assert(id >= 0 && id <= 12);
+            obj_marker.color.r = coloursR[id];
+            obj_marker.color.g = coloursG[id];
+            obj_marker.color.b = coloursB[id];
+        }
+        if(id == 6 || id == 7 || id == 11 || id == 12){
+            obj_marker.type = visualization_msgs::Marker::SPHERE;
+        }else if(id == 8 || id == 9){
+            obj_marker.type = visualization_msgs::Marker::CYLINDER;
         }
         all_markers.markers.push_back(obj_marker);
     }

@@ -342,15 +342,84 @@ void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 
 void FunctionBlocks::testAdd2Map(void)
 {
+    ras_msgs::RAS_Evidence evidence;
     classification::ClassifiedObjectArray objects;
     classification::ClassifiedObject obj;
     objects.header.frame_id = "cam_link";
     objects.header.stamp = ros::Time(0);
-    obj.name = "red_cube";
+    
+    obj.name = evidence.an_object;
+    obj.id = 0;
+    obj.p.x = 0.8;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.red_cube;
     obj.id = 1;
     obj.p.x = 0.4;
     obj.p.y = 0.5;
     objects.objects.push_back(obj);
+    
+    obj.name = evidence.blue_cube;
+    obj.id = 3;
+    obj.p.x = 0.3;
+    obj.p.y = 0.5;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.green_cube;
+    obj.id = 4;
+    obj.p.x = 0.4;
+    obj.p.y = 0.7;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.yellow_cube;
+    obj.id = 5;
+    obj.p.x = 0.3;
+    obj.p.y = 0.7;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.yellow_ball;
+    obj.id = 6;
+    obj.p.x = 1.0;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.red_ball;
+    obj.id = 7;
+    obj.p.x = 1.2;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.green_cylinder;
+    obj.id = 8;
+    obj.p.x = 1.4;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.blue_triangle;
+    obj.id = 9;
+    obj.p.x = 1.6;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.purple_cross;
+    obj.id = 10;
+    obj.p.x = 1.8;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.purple_star;
+    obj.id = 11;
+    obj.p.x = 2.0;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.patric;
+    obj.id = 12;
+    obj.p.x = 0.6;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
     obj.name = "debris";
     obj.id = 13;
     obj.p.x = 0.4;
@@ -358,6 +427,7 @@ void FunctionBlocks::testAdd2Map(void)
     obj.p2_debris.x = 0.65;
     obj.p2_debris.y = 0.0;
     objects.objects.push_back(obj);
+    
     this->add2map(objects);
 }
 
