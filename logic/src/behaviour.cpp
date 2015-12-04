@@ -65,6 +65,7 @@ void explore(void)
     fb->stopRobotAStar();
     ros::spinOnce();
     loop_rate.sleep();
+    ROS_INFO("BLOCKED NOT LOCALIZED");
   }
   fb->setWallFollower(false);
   fb->openDoor();
