@@ -210,7 +210,7 @@ int main(int argc, char **argv)
   fb = new FunctionBlocks(n);
 
   std::string behaviour;
-  n.param<std::string>("logic_behaviour", behaviour, "test");
+  n.param<std::string>("logic_behaviour", behaviour, "explore");
   if(behaviour.compare("explore") == 0){
     explore();
   }else if(behaviour.compare("fetch") == 0){
