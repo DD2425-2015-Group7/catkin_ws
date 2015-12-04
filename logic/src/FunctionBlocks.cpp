@@ -93,7 +93,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 }
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
-  ROS_INFO("Jesper");
+  //ROS_INFO("Jesper");
   static int count = 0;
   // Copy the frame_id of the header
   objectsVision->header.frame_id = msg->header.frame_id; 
@@ -137,7 +137,7 @@ double FunctionBlocks::smoothUpdateVelocity(double current, double required, dou
 
 void FunctionBlocks::turn(double yaw) 
 {
-  ROS_INFO("Turn: %f\n", yaw);
+  //ROS_INFO("Turn: %f\n", yaw);
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int timout = 5;
@@ -158,10 +158,10 @@ void FunctionBlocks::turn(double yaw)
   int gain = (yaw > 0)? 1 : -1;
 
   double diff = tf::getYaw(odomPose.orientation) - init_yaw;
-  ROS_INFO("Difference turning%f\n", diff);
+  //ROS_INFO("Difference turning%f\n", diff);
 
   do {
-    ROS_INFO("Difference turning%f\n", diff);
+    //ROS_INFO("Difference turning%f\n", diff);
    
     diff = fabs(tf::getYaw(odomPose.orientation) - init_yaw);
     if (diff > M_PI) {
@@ -171,7 +171,7 @@ void FunctionBlocks::turn(double yaw)
     }
  
     twist.angular.z = /*fabs(diff) **/ gain * a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
-    ROS_INFO("Publish:%f\n", twist.angular.z);
+    //ROS_INFO("Publish:%f\n", twist.angular.z);
     twist_pub->publish(twist);
     ros::spinOnce();
     loop_rate.sleep();  
@@ -179,7 +179,7 @@ void FunctionBlocks::turn(double yaw)
   } while ( (ros::ok()) /*&& (i < (rate*timout))*/
 	    && (fabs(diff) < fabs(yaw)) );
 
-  ROS_INFO("End turn");
+  //ROS_INFO("End turn");
   twist.angular.z = 0;
   twist_pub->publish(twist);
 }
@@ -187,13 +187,13 @@ void FunctionBlocks::turn(double yaw)
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
   //TODO: process also point p2_debris for debris.
-  ROS_INFO("Processing start");
+  //ROS_INFO("Processing start");
   this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
-  ROS_INFO("Let's turn !");
+  //ROS_INFO("Let's turn !");
   this->turn(angle);
-  ROS_INFO("Turn OK!");
+  //ROS_INFO("Turn OK!");
 
   // We reset the Array
   objectsVision->objects.clear();
@@ -213,7 +213,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
     loop_rate.sleep();
   } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
   
-  ROS_INFO("Waiting time finished");
+  //ROS_INFO("Waiting time finished");
   
   std::unordered_map<std::string,int> nbrObj;
   std::unordered_map<std::string, int>::iterator it_nbr;
@@ -310,7 +310,7 @@ void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
 
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 {
-  ROS_INFO("Add2Map");
+  //ROS_INFO("Add2Map");
   geometry_msgs::PointStamped p0, p1, p20, p21;
   //assert(objects.header.frame_id.compare("cam_link")==0);
   p0.header.frame_id = objects.header.frame_id;
@@ -441,11 +441,11 @@ bool FunctionBlocks::objectDetected(void)
   int threshold_vision = 5;
 
   if (objDetectTimeout > 24) {
-    ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
+    //ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
     return (objectsVision->objects.size() > threshold_vision);
   } else {
     objDetectTimeout++; 
-    ROS_INFO("Detection TROP TOT");
+    //ROS_INFO("Detection TROP TOT");
     return false;
   }
 
