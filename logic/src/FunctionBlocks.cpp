@@ -54,7 +54,10 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     mclReady = false;
     mclLocalized = false;
     
-    espeak_pub = new ros::Publisher();;
+    all_markers = new visualization_msgs::MarkerArray();
+    
+    state_marker_pub = new ros::Publisher();
+    espeak_pub = new ros::Publisher();
     vision_sub = new ros::Subscriber();
     odom_sub = new ros::Subscriber();
     mcl_sub = new ros::Subscriber();
@@ -62,6 +65,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     evidence_pub = new ros::Publisher();
     twist_pub = new ros::Publisher();
     goalPose_pub = new ros::Publisher();
+    *state_marker_pub =  n.advertise<visualization_msgs::MarkerArray>("/logic/state", 1000);
     *espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
     *vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000, &FunctionBlocks::visionCB, this);
     *odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 1000, &FunctionBlocks::odomCB, this);
@@ -487,6 +491,20 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 
 }
 
+void FunctionBlocks::testPathPlanning(void)
+{
+    geometry_msgs::Pose test_pose;
+    test_pose.position.x = 2.05;
+    test_pose.position.y = 0.7;
+    test_pose.position.z = 0;
+    test_pose.orientation.x = 0;
+    test_pose.orientation.y = 0;
+    test_pose.orientation.z = 0;
+    test_pose.orientation.w = 1;
+    std::cout << "Size of the test path: " <<  getPath(test_pose).poses.size() << std::endl;
+    std::cout << "Distance test path " <<  dist2goal(test_pose) << std::endl;
+}
+
  bool FunctionBlocks::poseReached(geometry_msgs::Pose &pose, double radius, double yaw)
  {
    std::string TargetFrameName = "/map";
@@ -724,4 +742,61 @@ void FunctionBlocks::stopRobotAStar(void)
   
   go2goal(stop);
 
+}
+
+void FunctionBlocks::reportState(std::string text, int verbose)
+{
+    std::string head = "Behaviour: ";
+    
+    if(verbose>1){
+        ROS_INFO("%s", (head + text).c_str());
+        return;
+    }
+    
+    all_markers->markers.clear();
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = MapFrameName;
+    marker.header.stamp = ros::Time();
+    marker.ns = "state_texts";
+    marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.scale.z = 0.1;
+    marker.color.a = 1.0;
+    marker.color.r = 1;
+    marker.color.g = 1;
+    marker.color.b = 1;
+    marker.pose.position.z = 0.05;
+    
+    marker.pose.position.x = -0.2;
+    marker.pose.position.y = 1.8;
+    marker.id = 1;
+    marker.text = head + text;
+    ROS_INFO("%s", marker.text.c_str());
+    all_markers->markers.push_back(marker);
+    
+    marker.pose.position.x = -0.4;
+    marker.pose.position.y = 1.8;
+    marker.id = 2;
+    marker.text = isLocalized()?"Is localized.":"Not localized.";
+    ROS_INFO("%s", marker.text.c_str());
+    all_markers->markers.push_back(marker);
+    
+    publishing();
+    
+}
+
+void FunctionBlocks::publishing(void)
+{
+    this->state_marker_pub->publish(*all_markers);
+}
+
+void FunctionBlocks::testReporting(void)
+{
+    ros::Rate loop_rate(5);
+    reportState("Test behaviour.", 1);
+    while(ros::ok()){
+        publishing();
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
 }
