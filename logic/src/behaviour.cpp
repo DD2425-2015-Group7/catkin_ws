@@ -11,12 +11,15 @@ void localize(void)
   const int rate = 5;
   classification::ClassifiedObjectArray objectArray;
   ros::Rate loop_rate(rate);
+  
+  fb->reportState("Localize.", 1);
     
   fb->initUnknown();
   fb->setWallFollower(true);
 
   while (ros::ok()){
     if(fb->objectDetected()){
+      fb->reportState("Localize and object detected.", 2);  
       objectArray = fb->processObject();
       fb->objects2localize(objectArray);
     }
@@ -24,6 +27,7 @@ void localize(void)
       fb->setWallFollower(false);
       return;
     }
+    fb->publishing();
     ros::spinOnce();
     loop_rate.sleep();
   }
@@ -35,13 +39,14 @@ void getOut(void)
     const int rate = 5;
     ros::Rate loop_rate(rate);
     
-    ROS_INFO("Getting out !");
+    fb->reportState("Getting out!", 1);
     fb->go2goal(*startPose); 
     while (ros::ok()) {
       if(fb->poseReached(*startPose, radiusTolerance, yawTolerance)){
 	fb->speak("Hooray! I have done it! Applause, please!");
 	return;
       }
+      fb->publishing();
       ros::spinOnce();
       loop_rate.sleep();
     }
@@ -54,7 +59,7 @@ void explore(void)
   classification::ClassifiedObjectArray objectArray;
   bool goalSet = false;
   ros::Rate loop_rate(rate);
-    
+  fb->reportState("Explore.", 1);  
   fb->initPose(*startPose);
   while (ros::ok() && (!fb->isLocalized())) {
     fb->stopRobotAStar();
@@ -67,29 +72,30 @@ void explore(void)
 
   do{
     if(!goalSet){
+      fb->reportState("New exploration goal.", 2);  
       goal = fb->exploreNext();
       fb->go2goal(goal);
       goalSet = true;
     }
     if(fb->poseReached(goal, radiusTolerance, yawTolerance)){
+        fb->reportState("Exploration goal reached.", 2);  
       goalSet = false;
     }
     if(fb->objectDetected()){
-      ROS_INFO("111111111111111111111111111111111111111111111111111111");
+      fb->reportState("Exploring and object detected.", 2);  
       fb->stopRobotAStar();
       objectArray = fb->processObject();
-      ROS_INFO("222222222222222222222222222222222222222222222222222222");   
-      //      fb->add2map(objectArray);
-      ROS_INFO("333333333333333333333333333333333333333333333333333333");   
+      fb->reportState("Exploring and object processed.", 3);     
+      //      fb->add2map(objectArray);  
       fb->sendEvidence(objectArray);
-      ROS_INFO("444444444444444444444444444444444444444444444444444444");   
       fb->go2goal(goal);
-      ROS_INFO("555555555555555555555555555555555555555555555555555555");   
+      fb->reportState("Exploration continues.", 2);  
     }
     if(!fb->isLocalized()){
       fb->stopRobotAStar();
       localize();
     }
+    fb->publishing();
     ros::spinOnce();
     loop_rate.sleep();
   } while( (ros::ok()) && (safetyTime + fb->time2goal(*startPose) < fb->secondsLeft()) );
@@ -102,6 +108,7 @@ void exploreWall(void)
   classification::ClassifiedObjectArray objectArray;
   ros::Rate loop_rate(rate);
     
+    fb->reportState("Exploring wall.", 1);
   fb->initPose(*startPose);
   fb->setWallFollower(true);
   fb->openDoor();
@@ -109,15 +116,16 @@ void exploreWall(void)
   do{
     fb->setWallFollower(true);
     if(fb->objectDetected()){
-      ROS_INFO("Object detected behaviour");
+        fb->reportState("Exploring wall and object detected.", 2);  
       fb->setWallFollower(false);
       objectArray = fb->processObject();
       fb->add2map(objectArray);
       fb->sendEvidence(objectArray);
       fb->setWallFollower(true);
     } else {
-      ROS_INFO("Nothing");
+      fb->reportState("Exploring wall and nothing detected.", 2);
     }
+    fb->publishing();
     ros::spinOnce();
     loop_rate.sleep();
   } while( (ros::ok()) && (safetyTime < fb->secondsLeft()) );
@@ -128,15 +136,18 @@ void fetchAndReport(classification::ClassifiedObjectArray& objectArray)
 {
     const int rate = 5;
     ros::Rate loop_rate(rate);
+    fb->reportState("Fetch and report an object.", 1);
     geometry_msgs::Pose goal = fb->fetchNext();
     //TODO: remove visited objects from the right stack and in the right function!
     //      compare fb->fetchNext() and fb->sendEvidence(objectArray)
+    fb->go2goal(goal);
     do{
-        fb->go2goal(goal);
         if(fb->poseReached(goal, radiusTolerance, yawTolerance)){
+            fb->reportState("Object fetched.", 1);
             fb->sendEvidence(objectArray);
             return;
         }
+        fb->publishing();
         ros::spinOnce();
         loop_rate.sleep();
     }while( (ros::ok()) && (safetyTime + fb->time2goal(*startPose) < fb->secondsLeft()) );
@@ -150,6 +161,7 @@ void fetch(void)
   bool goalSet = false;
   ros::Rate loop_rate(rate);
     
+    fb->reportState("Fetch.", 1);
   fb->initUnknown();
   fb->openDoor();
   fb->startTimer(fetchingTimeout);
@@ -157,14 +169,18 @@ void fetch(void)
     
   do{
     if(!goalSet){
+        fb->reportState("New fetching goal.", 2);
       goal = fb->fetchNext();
+      fb->go2goal(goal);
       goalSet = true;
     }
-    fb->go2goal(goal);
+    
     if(fb->poseReached(goal, radiusTolerance, yawTolerance)){
+        fb->reportState("Fetching goal reached.", 2);
       goalSet = false;
     }
     if(fb->objectDetected()){
+        fb->reportState("Fetching and object detected.", 2);
       fb->stopRobotAStar();
       objectArray = fb->processObject();
       fb->add2map(objectArray);
@@ -174,6 +190,7 @@ void fetch(void)
       fb->stopRobotAStar();
       localize();
     }
+    fb->publishing();
     ros::spinOnce();
     loop_rate.sleep();
   }while( (ros::ok()) && (safetyTime + fb->time2goal(*startPose) < fb->secondsLeft()) );
@@ -193,7 +210,7 @@ int main(int argc, char **argv)
   fb = new FunctionBlocks(n);
 
   std::string behaviour;
-  n.param<std::string>("logic_behaviour", behaviour, "explore");
+  n.param<std::string>("logic_behaviour", behaviour, "test");
   if(behaviour.compare("explore") == 0){
     explore();
   }else if(behaviour.compare("fetch") == 0){
@@ -205,16 +222,8 @@ int main(int argc, char **argv)
     // fb->fetchNext();
     // fb->testAdd2Map();
     // fb->testTimer();
-    geometry_msgs::Pose test_pose;
-    test_pose.position.x = 2.05;
-    test_pose.position.y = 0.7;
-    test_pose.position.z = 0;
-    test_pose.orientation.x = 0;
-    test_pose.orientation.y = 0;
-    test_pose.orientation.z = 0;
-    test_pose.orientation.w = 1;
-    std::cout << "Size of the test path: " <<  fb->getPath(test_pose).poses.size() << std::endl;
-     std::cout << "Distance test path " <<  fb->dist2goal(test_pose) << std::endl;
+    // fb->testPathPlanning();
+    // fb->testReporting();
     }else if(behaviour.compare("explore_wall") == 0){
         exploreWall();
   }else{
