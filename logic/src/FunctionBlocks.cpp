@@ -187,13 +187,14 @@ void FunctionBlocks::turn(double yaw)
 classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
   //TODO: process also point p2_debris for debris.
-  //ROS_INFO("Processing start");
+  ROS_INFO("Processing start");
   this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
+  std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
-  //ROS_INFO("Let's turn !");
+  std::cout << "Let's turn  " << angle << std::endl;
   this->turn(angle);
-  //ROS_INFO("Turn OK!");
+  ROS_INFO("Turn OK!");
 
   // We reset the Array
   objectsVision->objects.clear();
@@ -213,29 +214,39 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
     loop_rate.sleep();
   } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
   
-  //ROS_INFO("Waiting time finished");
+  ROS_INFO("Waiting time finished");
   
   std::unordered_map<std::string,int> nbrObj;
   std::unordered_map<std::string, int>::iterator it_nbr;
   classification::ClassifiedObject current;
-  
+  std::string classID;
+  std::stringstream streamx, streamy;
+
   //Now, let's check what the objectVion Array contains
   for (int j=0; j < objectsVision->objects.size() ; j++) {
     // if the class of the current object is not present yet
+    
     current = objectsVision->objects[j];
-    it_nbr = nbrObj.find(current.name);
+    // Create the ID of the object
+    // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
+    // 1cm precision on x and y for the cells
+    streamx << std::fixed << std::setprecision(3) << current.p.x;
+    streamy << std::fixed << std::setprecision(3) << current.p.y;
+    classID = current.name + streamx.str() + streamy.str();
+    
+    it_nbr = nbrObj.find(classID);
     
     if ( it_nbr  == nbrObj.end() ) {
       // We initialize the number of object of this class
       nbrObj.insert(
 		    {{
-			current.name, 
+			classID,
 			  1
 			  }}
 		    );
     } else {
       // else, we increment the counter
-      nbrObj[current.name] = nbrObj[current.name] + 1;
+      nbrObj[classID] = nbrObj[classID] + 1;
     }
   }
   
@@ -247,20 +258,27 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   for (int j=0; j < objectsVision->objects.size() ; j++) {
     // if the class of the current object is not present yet
     current = objectsVision->objects[j];
-    it_obj = objectsTable.find(current.name);
+    // Create the ID of the object
+    // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
+    // 1cm precision on x and y for the cells
+    streamx << std::fixed << std::setprecision(3) << current.p.x;
+    streamy << std::fixed << std::setprecision(3) << current.p.y;
+    classID = current.name + streamx.str() + streamy.str();
+    
+    it_obj = objectsTable.find(classID);
     
     // We test if the number of object of this type present is big enough
     if ( nbrObj[current.name] > objectsThreshold) {
       if ( it_obj  == objectsTable.end() ) {
 	objectsTable.insert(
 			    {{
-				current.name, 
+				classID, 
 				  current
 				  }}
 			    );
       } else {
-	//TEST//Don't do anything
-
+        
+	/******** TEST Don't do anything ********/
 	// //Average of the point
 	// objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
 	// objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
