@@ -170,6 +170,14 @@ target_link_libraries(path_planner
   ${catkin_LIBRARIES}
 )
 
+
+add_executable(map_explorer src/map_explorer.cpp)
+add_dependencies(map_explorer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(map_explorer
+  ${catkin_LIBRARIES}
+)
+
+
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )
