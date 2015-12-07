@@ -454,7 +454,7 @@ public:
 
                             //Determine the dimension of the bounding box ===========================
 
-                            if(cloud_cluster->points.size() > 100){
+                            if(cloud_cluster->points.size() > 70){
 
                                /* Eigen::Vector4f min_pt, max_pt;
                                 pcl::getMinMax3D (*cloud_filtered,it->indices, min_pt, max_pt);
@@ -524,7 +524,7 @@ public:
                 obj_loc_pub.publish(point_array);
 
                 i_pub.publish(i_to_pub);
-                //bb_publish.publish(bbox_array_msg);
+                bb_publish.publish(bbox_array_msg);
                 //std::cout <<"number of clusters " << j << std::endl;
             }
         }
