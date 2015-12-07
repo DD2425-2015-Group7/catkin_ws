@@ -56,8 +56,7 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
     }
     if(nextPoint > path.poses.size() - 1)
     {
-        ROS_INFO("Destination reached");
-        //set velocity to zero
+        //Destination reached, set velocity to zero.
         goalPose.pose.position.x = 0.0;
         goalPose.pose.position.y = 0.0;
         stopped = true;
@@ -95,9 +94,6 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
             nextPoint++;
         }
     }
-
-    ROS_INFO("Goal Point X :%f",goalPose.pose.position.x);
-    ROS_INFO("Goal Point Y :%f",goalPose.pose.position.y);
     
     if(!(stopped && lastStopped)) {
       pub_pose->publish(goalPose.pose);

@@ -1,4 +1,4 @@
 <?xml version="1.0"?>
 <launch>
-  <node pkg="rosbag" type="record" name="recorder" output="screen" args="/arduino/encoders /arduino/adc /evidence /map_node/objects /tf /odom /mcl/particles /map" />
+  <node pkg="rosbag" type="record" name="recorder" output="screen" args="/arduino/encoders /arduino/adc /arduino/pwm /cmd_vel /evidence /map_node/objects /mcl/is_localized /logic/state /logic/path /tf /odom /mcl/particles /map" />
 </launch> 

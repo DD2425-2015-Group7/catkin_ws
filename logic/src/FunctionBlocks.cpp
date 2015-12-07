@@ -7,6 +7,9 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     n.param<int>("map_occupied_min_threshold", this->minOccupied, 10);
     init_mcl_pub = new ros::Publisher();
     *init_mcl_pub = n.advertise<geometry_msgs::Pose>("/mcl/initial_pose", 2, true); //use latch
+    
+    n.param<std::string>("map_frame", MapFrameName, "map"); 
+    n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
 
     //Wait 8 s for the map service.
     if(!ros::service::waitForService("/map_node/get_map", 8000)){ 
@@ -19,6 +22,12 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
         ROS_ERROR("Add objects to map service unreachable.");
         return;
     }
+    
+    //Wait 1 s for the add objects to map service.
+    if(!ros::service::waitForService("/map_node/object_storage", 1000)){ 
+        ROS_ERROR("Object storage service unreachable.");
+        return;
+    }
 
     
     //Wait 2 s for the path test service
@@ -27,8 +36,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
       return;
     }
 
-    //Wait 2 s for the points path execution
-    if(!ros::service::waitForService("/motion_controllers/PathPointsExec", 2000)){ 
+    //Wait 3 s for the points path execution
+    if(!ros::service::waitForService("/motion_controllers/PathPointsExec", 3000)){ 
       ROS_ERROR("PathPointsExec service unreachable.");
       return;
     }
@@ -43,6 +52,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *map_client = n.serviceClient<map_tools::GetMap>("/map_node/get_map");
     add_objects_client = new ros::ServiceClient();
     *add_objects_client = n.serviceClient<map_tools::AddObjects>("/map_node/add_objects");
+    object_storage_client = new ros::ServiceClient();
+    *object_storage_client = n.serviceClient<map_tools::ObjectStorage>("/map_node/object_storage");
     updateMap();
     
     getPath_client = new ros::ServiceClient();
@@ -54,7 +65,13 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     mclReady = false;
     mclLocalized = false;
     
-    espeak_pub = new ros::Publisher();;
+    all_markers = new visualization_msgs::MarkerArray();
+    currentPath = new nav_msgs::Path();
+    currentPath->header.frame_id = MapFrameName;
+    
+    path_pub = new ros::Publisher();
+    state_marker_pub = new ros::Publisher();
+    espeak_pub = new ros::Publisher();
     vision_sub = new ros::Subscriber();
     odom_sub = new ros::Subscriber();
     mcl_sub = new ros::Subscriber();
@@ -62,6 +79,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     evidence_pub = new ros::Publisher();
     twist_pub = new ros::Publisher();
     goalPose_pub = new ros::Publisher();
+    *path_pub =  n.advertise<nav_msgs::Path>("/logic/path", 10);
+    *state_marker_pub =  n.advertise<visualization_msgs::MarkerArray>("/logic/state", 1000);
     *espeak_pub =  n.advertise<std_msgs::String>("/espeak/string", 1000);
     *vision_sub =  n.subscribe<classification::ClassifiedObjectArray>("/classifier/objects", 1000, &FunctionBlocks::visionCB, this);
     *odom_sub = n.subscribe<nav_msgs::Odometry>("/odom", 1000, &FunctionBlocks::odomCB, this);
@@ -71,8 +90,6 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *twist_pub = n.advertise<geometry_msgs::Twist>("/cmd_vel",1000);
     *goalPose_pub = n.advertise<geometry_msgs::Pose>("/goal_pose",1000);
 
-    n.param<std::string>("map_frame", MapFrameName, "map"); 
-    n.param<std::string>("robot_base_link", RobotFrameName, "base_link");
     
     tf_listener = new tf::TransformListener();
     
@@ -84,7 +101,7 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 }
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
-  ROS_INFO("Jesper");
+  //ROS_INFO("Jesper");
   static int count = 0;
   // Copy the frame_id of the header
   objectsVision->header.frame_id = msg->header.frame_id; 
@@ -128,7 +145,7 @@ double FunctionBlocks::smoothUpdateVelocity(double current, double required, dou
 
 void FunctionBlocks::turn(double yaw) 
 {
-  ROS_INFO("Turn: %f\n", yaw);
+  //ROS_INFO("Turn: %f\n", yaw);
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int timout = 5;
@@ -149,10 +166,10 @@ void FunctionBlocks::turn(double yaw)
   int gain = (yaw > 0)? 1 : -1;
 
   double diff = tf::getYaw(odomPose.orientation) - init_yaw;
-  ROS_INFO("Difference turning%f\n", diff);
+  //ROS_INFO("Difference turning%f\n", diff);
 
   do {
-    ROS_INFO("Difference turning%f\n", diff);
+    //ROS_INFO("Difference turning%f\n", diff);
    
     diff = fabs(tf::getYaw(odomPose.orientation) - init_yaw);
     if (diff > M_PI) {
@@ -162,7 +179,7 @@ void FunctionBlocks::turn(double yaw)
     }
  
     twist.angular.z = /*fabs(diff) **/ gain * a_speed; //smoothUpdateVelocity(twist.angular.z, a_speed, 0.1);
-    ROS_INFO("Publish:%f\n", twist.angular.z);
+    //ROS_INFO("Publish:%f\n", twist.angular.z);
     twist_pub->publish(twist);
     ros::spinOnce();
     loop_rate.sleep();  
@@ -170,7 +187,7 @@ void FunctionBlocks::turn(double yaw)
   } while ( (ros::ok()) /*&& (i < (rate*timout))*/
 	    && (fabs(diff) < fabs(yaw)) );
 
-  ROS_INFO("End turn");
+  //ROS_INFO("End turn");
   twist.angular.z = 0;
   twist_pub->publish(twist);
 }
@@ -181,9 +198,12 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   ROS_INFO("Processing start");
   this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
+  std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
+  std::cout << "Let's turn  " << angle << std::endl;
   this->turn(angle);
-  
+  ROS_INFO("Turn OK!");
+
   // We reset the Array
   objectsVision->objects.clear();
 
@@ -191,7 +211,6 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   
   verifiedObjects.header.frame_id = objectsVision->header.frame_id;
 
-  ROS_INFO("Turn process OK");
   const int rate = 10;
   ros::Rate loop_rate(rate);
   int time2wait = 2; // in seconds
@@ -208,24 +227,34 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   std::unordered_map<std::string,int> nbrObj;
   std::unordered_map<std::string, int>::iterator it_nbr;
   classification::ClassifiedObject current;
-  
+  std::string classID;
+  std::stringstream streamx, streamy;
+
   //Now, let's check what the objectVion Array contains
   for (int j=0; j < objectsVision->objects.size() ; j++) {
     // if the class of the current object is not present yet
+    
     current = objectsVision->objects[j];
-    it_nbr = nbrObj.find(current.name);
+    // Create the ID of the object
+    // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
+    // 1cm precision on x and y for the cells
+    streamx << std::fixed << std::setprecision(3) << current.p.x;
+    streamy << std::fixed << std::setprecision(3) << current.p.y;
+    classID = current.name + streamx.str() + streamy.str();
+    
+    it_nbr = nbrObj.find(classID);
     
     if ( it_nbr  == nbrObj.end() ) {
       // We initialize the number of object of this class
       nbrObj.insert(
 		    {{
-			current.name, 
+			classID,
 			  1
 			  }}
 		    );
     } else {
       // else, we increment the counter
-      nbrObj[current.name] = nbrObj[current.name] + 1;
+      nbrObj[classID] = nbrObj[classID] + 1;
     }
   }
   
@@ -237,47 +266,56 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   for (int j=0; j < objectsVision->objects.size() ; j++) {
     // if the class of the current object is not present yet
     current = objectsVision->objects[j];
-    it_obj = objectsTable.find(current.name);
+    // Create the ID of the object
+    // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
+    // 1cm precision on x and y for the cells
+    streamx << std::fixed << std::setprecision(3) << current.p.x;
+    streamy << std::fixed << std::setprecision(3) << current.p.y;
+    classID = current.name + streamx.str() + streamy.str();
+    
+    it_obj = objectsTable.find(classID);
     
     // We test if the number of object of this type present is big enough
     if ( nbrObj[current.name] > objectsThreshold) {
       if ( it_obj  == objectsTable.end() ) {
 	objectsTable.insert(
 			    {{
-				current.name, 
+				classID, 
 				  current
 				  }}
 			    );
       } else {
-	//Average of the point
-	objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
-	objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
-	objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
-	//Average of the second debris point
-	objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
-	objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
-	objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
-	//Average of the bounding box
-	objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
-	objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
-	objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
-	objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
-	// The other attributes of tege ClassifiedObject can be taken from any object of the array
+        
+	/******** TEST Don't do anything ********/
+	// //Average of the point
+	// objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
+	// objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
+	// objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
+	// //Average of the second debris point
+	// objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
+	// objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
+	// objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
+	// //Average of the bounding box
+	// objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
+	// objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
+	// objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
+	// objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
+	// // The other attributes of the ClassifiedObject can be taken from any object of the array
 
       }
     }
   }
 
-  for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
-    objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
-    objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
-    objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
+  // for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
+  //   objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
+  //   objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
+  //   objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
       
-    objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
-    objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
-    objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
-    objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
-  }
+  //   objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
+  //   objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
+  //   objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
+  //   objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
+  // }
   
 
   // We reset the Array
@@ -293,13 +331,12 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 }
 
 void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
-{
-    
+{   
 }
 
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 {
-  ROS_INFO("Add2Map");
+  //ROS_INFO("Add2Map");
   geometry_msgs::PointStamped p0, p1, p20, p21;
   //assert(objects.header.frame_id.compare("cam_link")==0);
   p0.header.frame_id = objects.header.frame_id;
@@ -336,15 +373,84 @@ void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
 
 void FunctionBlocks::testAdd2Map(void)
 {
+    ras_msgs::RAS_Evidence evidence;
     classification::ClassifiedObjectArray objects;
     classification::ClassifiedObject obj;
     objects.header.frame_id = "cam_link";
     objects.header.stamp = ros::Time(0);
-    obj.name = "red_cube";
+    
+    obj.name = evidence.an_object;
+    obj.id = 0;
+    obj.p.x = 0.8;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.red_cube;
     obj.id = 1;
     obj.p.x = 0.4;
     obj.p.y = 0.5;
     objects.objects.push_back(obj);
+    
+    obj.name = evidence.blue_cube;
+    obj.id = 3;
+    obj.p.x = 0.3;
+    obj.p.y = 0.5;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.green_cube;
+    obj.id = 4;
+    obj.p.x = 0.4;
+    obj.p.y = 0.7;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.yellow_cube;
+    obj.id = 5;
+    obj.p.x = 0.3;
+    obj.p.y = 0.7;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.yellow_ball;
+    obj.id = 6;
+    obj.p.x = 1.0;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.red_ball;
+    obj.id = 7;
+    obj.p.x = 1.2;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.green_cylinder;
+    obj.id = 8;
+    obj.p.x = 1.4;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.blue_triangle;
+    obj.id = 9;
+    obj.p.x = 1.6;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.purple_cross;
+    obj.id = 10;
+    obj.p.x = 1.8;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.purple_star;
+    obj.id = 11;
+    obj.p.x = 2.0;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
+    obj.name = evidence.patric;
+    obj.id = 12;
+    obj.p.x = 0.6;
+    obj.p.y = 0.0;
+    objects.objects.push_back(obj);
+    
     obj.name = "debris";
     obj.id = 13;
     obj.p.x = 0.4;
@@ -352,19 +458,20 @@ void FunctionBlocks::testAdd2Map(void)
     obj.p2_debris.x = 0.65;
     obj.p2_debris.y = 0.0;
     objects.objects.push_back(obj);
+    
     this->add2map(objects);
 }
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 15;
+  int threshold_vision = 5;
 
   if (objDetectTimeout > 24) {
-    ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
+    //ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
     return (objectsVision->objects.size() > threshold_vision);
   } else {
     objDetectTimeout++; 
-    ROS_INFO("Detection TROP TOT");
+    //ROS_INFO("Detection TROP TOT");
     return false;
   }
 
@@ -487,6 +594,22 @@ int FunctionBlocks::time2goal(geometry_msgs::Pose &p)
 
 }
 
+void FunctionBlocks::testPathPlanning(void)
+{
+    geometry_msgs::Pose test_pose;
+    test_pose.position.x = 2.05;
+    test_pose.position.y = 0.7;
+    test_pose.position.z = 0;
+    test_pose.orientation.x = 0;
+    test_pose.orientation.y = 0;
+    test_pose.orientation.z = 0;
+    test_pose.orientation.w = 1;
+    nav_msgs::Path path = getPath(test_pose);
+    *currentPath = path;
+    std::cout << "Size of the test path: " <<  path.poses.size() << std::endl;
+    std::cout << "Distance test path " <<  dist2goal(test_pose) << std::endl;
+}
+
  bool FunctionBlocks::poseReached(geometry_msgs::Pose &pose, double radius, double yaw)
  {
    std::string TargetFrameName = "/map";
@@ -530,6 +653,7 @@ void FunctionBlocks::go2goal(geometry_msgs::Pose &p)
 {
 
   nav_msgs::Path path =  getPath(p);
+  *currentPath = path;
 
   motion_controllers::GetPathPoints srv;
   srv.request.path = path;
@@ -725,3 +849,90 @@ void FunctionBlocks::stopRobotAStar(void)
   go2goal(stop);
 
 }
+
+void FunctionBlocks::reportState(std::string text, int verbose)
+{
+    std::string head = "Behaviour: ";
+    
+    if(verbose>2){
+        ROS_INFO("%s", (head + text).c_str());
+        return;
+    }
+    
+    all_markers->markers.clear();
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = MapFrameName;
+    marker.header.stamp = ros::Time();
+    marker.ns = "state_texts";
+    marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.scale.z = 0.1;
+    marker.color.a = 1.0;
+    marker.color.r = 1;
+    marker.color.g = 1;
+    marker.color.b = 1;
+    marker.pose.position.z = 0.05;
+    
+    marker.pose.position.x = -0.2;
+    marker.pose.position.y = 1.8;
+    marker.id = 1;
+    marker.text = head + text;
+    ROS_INFO("%s", marker.text.c_str());
+    all_markers->markers.push_back(marker);
+    
+    marker.pose.position.x = -0.4;
+    marker.pose.position.y = 1.8;
+    marker.id = 2;
+    marker.text = isLocalized()?"Is localized.":"Not localized.";
+    ROS_INFO("%s", marker.text.c_str());
+    all_markers->markers.push_back(marker);
+    
+    publishing();
+    
+}
+
+//Periodically call this publishing function to facilitate easier debugging and visualizations.
+void FunctionBlocks::publishing(void)
+{
+    // State texts, current path the robot is following.
+    this->state_marker_pub->publish(*all_markers);
+    this->path_pub->publish(*currentPath);
+}
+
+void FunctionBlocks::testReporting(void)
+{
+    ros::Rate loop_rate(5);
+    reportState("Test behaviour.", 1);
+    while(ros::ok()){
+        publishing();
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
+}
+
+bool FunctionBlocks::loadObjects(std::string bagFile)
+{
+    map_tools::ObjectStorage srv;
+    srv.request.action = "load";
+    srv.request.bag_file = bagFile;
+    if (object_storage_client->call(srv)){
+        return true;
+    }else{
+        ROS_ERROR("Failed to call service ObjectStorage (load).");
+        return false;
+    }
+}
+
+bool FunctionBlocks::saveObjects(std::string bagFile)
+{
+    map_tools::ObjectStorage srv;
+    srv.request.action = "store";
+    srv.request.bag_file = bagFile;
+    if (object_storage_client->call(srv)){
+        return true;
+    }else{
+        ROS_ERROR("Failed to call service ObjectStorage (store).");
+        return false;
+    }
+}
+

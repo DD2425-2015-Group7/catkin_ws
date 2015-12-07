@@ -18,6 +18,7 @@
 #include "map_tools/AddEllipse.h"
 #include "map_tools/AddObjects.h"
 #include "map_tools/GetMap.h"
+#include "map_tools/ObjectStorage.h"
 
 #include "path_planning/GetPath.h" 
 
@@ -33,6 +34,8 @@
 
 #include "std_msgs/String.h"
 #include "std_msgs/Bool.h"
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <unordered_map>
 
@@ -50,6 +53,9 @@ class FunctionBlocks
         void setViewPose(classification::ClassifiedObject& obj);
         void testAdd2Map(void);
         bool objectDetected(void);
+        bool loadObjects(std::string bagFile);
+        bool saveObjects(std::string bagFile);
+
         
         //Motion.
 	nav_msgs::Path getPath(geometry_msgs::Pose&);
@@ -59,7 +65,8 @@ class FunctionBlocks
         void go2goal(geometry_msgs::Pose&);
         void turn(double yaw);
         void setWallFollower(bool on);
-	void stopRobotAStar(void);
+        void stopRobotAStar(void);
+        void testPathPlanning(void);
 
         //Decisions.
         bool isPointFree(double x, double y);
@@ -69,8 +76,11 @@ class FunctionBlocks
         geometry_msgs::Pose fetchNext(void);
         
         //User interface.
+        void publishing(void);
+        void testReporting(void);
         void speak(std::string text);
         void sendEvidence(classification::ClassifiedObjectArray &);
+        void reportState(std::string text, int verbose);
         void openDoor(void);
         void startTimer(const int seconds);
         int secondsLeft(void);
@@ -96,8 +106,14 @@ class FunctionBlocks
         bool mclReady, mclLocalized;
         
         nav_msgs::OccupancyGrid *mapInflated;
-        ros::ServiceClient *map_client, *add_objects_client, *getPath_client, *getPathPoints_client;;
+        ros::ServiceClient *getPath_client, *getPathPoints_client;
+        ros::ServiceClient *map_client, *add_objects_client, *object_storage_client;
         ros::Publisher *init_mcl_pub;
+        
+        nav_msgs::Path *currentPath;
+        ros::Publisher *state_marker_pub, *path_pub;
+        visualization_msgs::MarkerArray *all_markers;
+        
 	ros::Publisher *espeak_pub;
 	ros::Subscriber *vision_sub;
 	ros::Subscriber *odom_sub;

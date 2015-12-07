@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <include file="$(find launch)/milestone3.launch" />
+    <include file="$(find logic)/launch/fetch.launch" />
+</launch> 

@@ -7,3 +7,5 @@ max_lin_speed: 0.2
 max_on_spot_angular_speed: 1.5
 max_lin_acc: 0.3
 max_ang_acc: 5.0
+go2pose_wall_following_enabled: false
+robot_safety_radius: 0.15

@@ -2,7 +2,7 @@
 #include "tf/transform_datatypes.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/Point.h"
-
+#include "ir_sensors/RangeArray.h"
 #include "geometry_msgs/Twist.h"
 #include "math.h"
 
@@ -11,11 +11,24 @@ double tolDistL = 0.03, tolDistH = 0.05, tolYawL = 0.2, tolYawH = 0.4;
 double maxLinSpeed = 0.2, maxOnSpot = 2.0, minOnSpot = 1.0;
 double maxLinAcc = 0.4, maxAngAcc = 5.0;
 double p_angle_lin = 0.5, p_angle_spot = 1.5;
+double irFrontMax = 0.8, irFrontMin = 0.1;
+double irSideMax = 0.2, irSideMin = 0.04, irSideMaxDiff = 0.05;
+double robotSafetyRadius = 0.15;
+bool wallFollowingEnabled = true;
+double p_wall_alpha = 25;
 
 double x, y, yawFin;
 double distance, angle;
 geometry_msgs::Twist *twist;
 bool poseReceived = false;
+
+bool irReceived = false;
+double distance_lefts_front;
+double distance_lefts_back;
+double distance_front_left;
+double distance_front_right;
+double distance_rights_front;
+double distance_rights_back;
 
 void updateValues(double _x, double _y, double _yawFin)
 {
@@ -36,6 +49,76 @@ void setPose(const geometry_msgs::Pose::ConstPtr& msg)
     //Pose is expected to be in the /base_link frame.
     updateValues(msg->position.x, msg->position.y, tf::getYaw(msg->orientation));
     poseReceived = true;
+}
+
+void irCB(const ir_sensors::RangeArray::ConstPtr &msg)
+{
+    assert(msg->array.size() == 6);
+    
+    distance_lefts_front = msg->array[0].range;
+    distance_lefts_back = msg->array[1].range;
+    distance_front_left = msg->array[2].range;
+    distance_front_right = msg->array[3].range;
+    distance_rights_front = msg->array[4].range;
+    distance_rights_back = msg->array[5].range;
+
+    irReceived = true;
+}
+
+int wallAvailable(void)
+{
+    // Choose which wall to follow.
+    // 0 none, -1 left, 1 right
+    if(!wallFollowingEnabled)
+        return 0;
+        
+    if(!irReceived)
+        return 0;
+    
+    if(distance_rights_front > irSideMin && distance_rights_front < irSideMax
+        && distance_rights_back > irSideMin && distance_rights_back < irSideMax){
+            if(abs(distance_rights_back - distance_rights_front) < irSideMaxDiff){
+                return 1;
+            }
+    }
+    
+    if(distance_lefts_front > irSideMin && distance_lefts_front < irSideMax
+        && distance_lefts_back > irSideMin && distance_lefts_back < irSideMax){
+            if(abs(distance_lefts_back - distance_lefts_front) < irSideMaxDiff){
+                return -1;
+            }
+    }
+    
+    return 0;
+}
+
+double followWall(int wall)
+{
+    if(!irReceived)
+        return 0;
+    if(!wallFollowingEnabled || wall == 0)
+        return 0;
+
+    if(wall>0)
+        return -p_wall_alpha * ( (double)distance_rights_front - (double)distance_rights_back);
+    else
+        return p_wall_alpha * ( (double)distance_lefts_front - (double)distance_lefts_back);
+}
+
+double frontWallDist(void)
+{
+    if(!irReceived)
+        return INFINITY;
+    double dist = INFINITY;
+        
+    if(distance_front_left < irFrontMax && distance_front_left > irFrontMin)
+        dist = distance_front_left;
+
+    if(distance_front_right < irFrontMax && distance_front_right > irFrontMin){
+        if(distance_front_right < dist)
+            dist = distance_front_right;
+    }
+    return dist - robotSafetyRadius;
 }
 
 double boundaries(double val, double low, double high)
@@ -59,10 +142,14 @@ double boundaries(double val, double low, double high)
 void goForward(double dt)
 {
     double vx = twist->linear.x;
-    if(distance > (0.5 * vx * vx)/maxLinAcc ){
+    bool wallFollowing;
+    if(distance > (0.5 * vx * vx)/maxLinAcc &&
+            frontWallDist() > (0.5 * vx * vx)/maxLinAcc){
         vx += maxLinAcc * dt;
+        wallFollowing = true;
     }else{
         vx -= maxLinAcc * dt;
+        wallFollowing = false;
     }
     if(vx > maxLinSpeed){
         vx = maxLinSpeed;
@@ -71,8 +158,14 @@ void goForward(double dt)
         vx = 0.0;
     }
     twist->linear.x = vx;
-    twist->angular.z = p_angle_lin * angle;
+    int wall = wallAvailable();
+    if(wall && wallFollowing){
+        twist->angular.z = followWall(wall);
+    }else{
+        twist->angular.z = p_angle_lin * angle;
+    }
     twist->angular.z = boundaries(twist->angular.z, 0.0, maxOnSpot);
+    
 }
 
 void turning(double a, double dt)
@@ -100,6 +193,8 @@ int main(int argc, char *argv[])
     ros::Publisher pub_twist = n.advertise<geometry_msgs::Twist>("/cmd_vel",2); 
     twist = new geometry_msgs::Twist();
     
+    ros::Subscriber dist_sub = n.subscribe("/ir_publish/sensors", 5, irCB);
+    
     n.param<double>("p_angle_lin", p_angle_lin, 2.0);
     n.param<double>("p_angle_spot", p_angle_spot, 1.5);
     n.param<double>("yaw_tolerance_low", tolYawL, 0.2);
@@ -111,6 +206,9 @@ int main(int argc, char *argv[])
     n.param<double>("min_on_spot_angular_speed", minOnSpot, 1.0);
     n.param<double>("max_lin_acc", maxLinAcc, 0.5);
     n.param<double>("max_ang_acc", maxAngAcc, 5.0);
+    n.param<bool>("go2pose_wall_following_enabled", wallFollowingEnabled, false);
+    n.param<double>("p_wall_alpha", p_wall_alpha, 25.0);
+    n.param<double>("robot_safety_radius", robotSafetyRadius, 0.15);
     
     double rate = 20;
     int count = 0;
@@ -131,7 +229,9 @@ int main(int argc, char *argv[])
         if(fabs(angle) > tolYawH)
             turningEnabled = true;
         
-        if(distance > tolDistL && !turningEnabled){
+        //TODO: test if wall checking prevents reaching the desired goal.
+        // If that is the case, integrate pub_points_list and go2pose into one node.
+        if((distance > tolDistL) && (frontWallDist() > 0) && !turningEnabled){
             curs = fw;
             goForward(dt);
         }else if(distance > tolDistH && turningEnabled){

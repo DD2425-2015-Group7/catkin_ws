@@ -18,7 +18,5 @@
   <include file="$(find bb_comparison)/launch/obj_find.launch" />
 
   <node pkg = "ras_espeak" type = "espeak_node" respawn = "false" name = "espeak_node" output = "log"/>
-  <node pkg="path_planning" type="Astar" respawn="false" name="Astar" output="screen" required="true" />
-  <node pkg="logic" type="behaviour" respawn="false" name="behaviour" output="screen" required="true" />
   
 </launch> 
