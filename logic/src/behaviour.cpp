@@ -207,11 +207,9 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "behaviour");
   ros::NodeHandle n("/behaviour");
   
-  
-    
   startPose = new geometry_msgs::Pose();
-  startPose->position.x = 0.2;
-  startPose->position.y = 0.2;
+  startPose->position.x = 0.22;//0.22; //0.2;                                
+  startPose->position.y = 0.66;//2.25; //0.2; 
   startPose->orientation = tf::createQuaternionMsgFromYaw(0);
   
   fb = new FunctionBlocks(n);
