@@ -58,6 +58,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
    FILES
    GetPath.srv
+   NextGoal.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -177,6 +178,16 @@ target_link_libraries(map_explorer
   ${catkin_LIBRARIES}
 )
 
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
+)
+
+add_executable(TF_map_explorer src/TF_map_explorer.cpp)
+add_dependencies(TF_map_explorer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(TF_map_explorer
+  ${catkin_LIBRARIES}
+)
 
 include_directories(
   ${catkin_INCLUDE_DIRS}

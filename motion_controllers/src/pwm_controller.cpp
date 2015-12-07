@@ -143,7 +143,7 @@ ras_arduino_msgs::PWM motorControl(void)
 	}
     
     if(abs(pwmL) > 2 || abs(pwmR) > 2){
-        if(!encodersUpdated){
+        if(!encodersUpdated && encCounter < 3*controlRate){
             encCounter++;
         }else{
             encCounter = 0;
