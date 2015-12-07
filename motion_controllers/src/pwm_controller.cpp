@@ -11,6 +11,7 @@
 std::mutex mtx;
 double refOmegaL = 0.0, refOmegaR = 0.0;
 int encL = 0, encR = 0;
+bool encodersUpdated = false;
 
 // Usable linear velocity range: 0.2 to 0.8 m/s
 // Usable angular velocity range, on the spot: 1.0 to 6.0 rad/s
@@ -57,6 +58,7 @@ void updateEncoders(const ras_arduino_msgs::Encoders::ConstPtr& msg)
 	mtx.lock();
 	encR += msg->delta_encoder1;
 	encL += msg->delta_encoder2;
+    encodersUpdated = true;
 	mtx.unlock();
 }
 
@@ -69,6 +71,7 @@ ras_arduino_msgs::PWM motorControl(void)
 	static int errInt2L = 0, errInt2R = 0;
 	static int flagIntL = 1, flagIntR = 1;
     static int flagIntRef = 1;
+    static int encCounter = 0;
 	
 	mtx.lock();
     if(flagIntRef){
@@ -103,6 +106,7 @@ ras_arduino_msgs::PWM motorControl(void)
 		
     pwmL = int(controlPL*errL + controlIL*errIntL + controlDL*(errL - errPrevL) + controlI2L*errInt2L);
     pwmR = int(controlPR*errR + controlIR*errIntR + controlDR*(errR - errPrevR) + controlI2R*errInt2R);
+    
 
     errPrevL = errL;
     errPrevR = errR;
@@ -137,6 +141,27 @@ ras_arduino_msgs::PWM motorControl(void)
 	}else if(flagIntR != 1){
 		flagIntR = 1;
 	}
+    
+    if(abs(pwmL) > 2 || abs(pwmR) > 2){
+        if(!encodersUpdated){
+            encCounter++;
+        }else{
+            encCounter = 0;
+            encodersUpdated = false;
+        }
+            
+        if(encCounter > controlRate/5){
+            pwmL = 0;
+            pwmR = 0;
+            ras_arduino_msgs::PWM msg;
+            msg.PWM1 = pwmL;
+            msg.PWM2 = -pwmR; 
+            ROS_WARN("No encoder data for more than 200 ms!");
+            return msg;
+        }
+    }else{
+        encCounter = 0;
+    } 
 	
 	ras_arduino_msgs::PWM msg;
 	msg.PWM1 = pwmL;
