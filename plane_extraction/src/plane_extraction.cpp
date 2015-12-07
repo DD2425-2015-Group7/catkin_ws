@@ -44,6 +44,7 @@ class Plane_Extraction{
     ros::Publisher obj_loc_pub;
     ros::Publisher bb_publish;
     ros::Publisher i_pub;
+    std::string color_path;
     std::vector<std::vector<int> > class_color_avg;
     int nmr_classes;
     std::vector<std::string> color_v;
@@ -52,7 +53,7 @@ public:
     void run(){
         using namespace message_filters;
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2,sensor_msgs::Image> Policy;
-
+        n.param<std::string>("linear_classifier_model_file", color_path, "/home/ras27/Documents/averageAll.csv");
         c_pub = n.advertise<sensor_msgs::PointCloud2> ("/clustered_object_cloud", 1);
         obj_loc_pub = n.advertise<geometry_msgs::PolygonStamped>("/object_point/uncompared",20);
         //bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
@@ -84,7 +85,7 @@ public:
     void reader(const char avgFile[]){
         //initialize avg, weights, bias,
         class_color_avg.clear();
-        nmr_classes = 10;
+        nmr_classes = 16;
         std::ifstream ifs(avgFile);
         assert(ifs.is_open());
         int ff;
@@ -153,7 +154,7 @@ public:
         pcl::fromROSMsg(*msg,cloud_blob_test);
 
         sensor_msgs::Image i_to_pub; //publish the image...
-        std::string color_path = "/home/ras27/Documents/averageAll.csv";
+
 
         reader(color_path.c_str());
 
@@ -396,7 +397,7 @@ public:
                        isObject = 19;
                        break;
                    }
-
+                    std::cerr << "clasS: " << isObject << std::endl;
 
                     if(color != "garbage"){
                         sensor_msgs::PointCloud2 out;
