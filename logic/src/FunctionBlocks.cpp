@@ -101,14 +101,14 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
 }
     
 void FunctionBlocks::visionCB(const classification::ClassifiedObjectArray::ConstPtr& msg) {
-  //ROS_INFO("Jesper");
+  ROS_INFO("CALLBACK VISION");
   static int count = 0;
   // Copy the frame_id of the header
   objectsVision->header.frame_id = msg->header.frame_id; 
 
   if (count > 12) {
     if ( msg->objects.size() < 5 ) {
-      objectsVision->objects.clear();
+      //      objectsVision->objects.clear();
     }
     count = 0;
   }
@@ -196,8 +196,9 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 {
   //TODO: process also point p2_debris for debris.
   ROS_INFO("Processing start");
-  this->speak("Object detected");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
+  this->speak("Object detected"); 
+  this->speak(lastSeen.name);
   std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   std::cout << "Let's turn  " << angle << std::endl;
@@ -464,14 +465,14 @@ void FunctionBlocks::testAdd2Map(void)
 
 bool FunctionBlocks::objectDetected(void)
 {
-  int threshold_vision = 5;
+  int threshold_vision = 1;
 
   if (objDetectTimeout > 24) {
-    //ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
+    ROS_INFO("Detection resulat: %d\n", ((int)objectsVision->objects.size() > threshold_vision));
     return (objectsVision->objects.size() > threshold_vision);
   } else {
     objDetectTimeout++; 
-    //ROS_INFO("Detection TROP TOT");
+    ROS_INFO("Detection TROP TOT");
     return false;
   }
 
@@ -703,6 +704,9 @@ geometry_msgs::Pose FunctionBlocks::fetchNext(void)
     p.position.x = 0;
     p.position.y = 0;
     p.position.z = 2.0;
+    p.orientation.x = p.orientation.y = 0;
+    p.orientation.z = 0;
+    p.orientation.w = 1.0;
     if(objects2visit->objects.size() < 1)
         return p;
     p = objects2visit->objects[0].viewPose;
