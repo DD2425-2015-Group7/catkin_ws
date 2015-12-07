@@ -109,16 +109,16 @@ double frontWallDist(void)
 {
     if(!irReceived)
         return INFINITY;
+    double dist = INFINITY;
         
-    if(distance_front_left > irFrontMax || distance_front_right > irFrontMax)
-        return INFINITY;
-    if(distance_front_left < irFrontMin || distance_front_right < irFrontMin)
-        return INFINITY;
-        
-    if(distance_front_left < distance_front_right)
-        return distance_front_left - robotSafetyRadius;
-    else
-        return distance_front_right - robotSafetyRadius;
+    if(distance_front_left < irFrontMax && distance_front_left > irFrontMin)
+        dist = distance_front_left;
+
+    if(distance_front_right < irFrontMax && distance_front_right > irFrontMin){
+        if(distance_front_right < dist)
+            dist = distance_front_right;
+    }
+    return dist - robotSafetyRadius;
 }
 
 double boundaries(double val, double low, double high)
