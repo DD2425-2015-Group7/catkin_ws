@@ -9,7 +9,7 @@ mcl_particles: 16000
 mcl_rate: 5
 mcl_init_cone_radius: 0.2
 mcl_init_yaw_variance: 0.15
-mcl_min_position_delta: 0.1
+mcl_min_position_delta: 0.05
 mcl_aslow: 0.0002
 mcl_afast: 0.02
 mcl_crash_radius: 0.1
@@ -22,6 +22,6 @@ odometry_model_a2: 0.03
 odometry_model_a3: 0.02 
 odometry_model_a4: 0.02
 # sigma_hit 0.2, z_hit 0.8, z_random_over_z_max 0.2
-ir_model_sigma_hit: 0.4
+ir_model_sigma_hit: 0.2
 ir_model_z_hit: 0.8
 ir_model_z_random_over_z_max: 0.2
