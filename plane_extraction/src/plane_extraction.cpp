@@ -63,7 +63,7 @@ public:
         Synchronizer<Policy> sync(Policy(50),Cloud, image);
 
         sync.registerCallback(boost::bind(&Plane_Extraction::cloud_callback,this, _1, _2));
-        ros::Rate loop_rate(5);
+        ros::Rate loop_rate(15);
 
         ros::spin ();
         loop_rate.sleep();
@@ -212,7 +212,7 @@ public:
             seg.segment(*inliers, *coefficients);
             if (inliers->indices.size() == 0)
             {
-                std::cout << "Could not estimate a planar mode   l for the given dataset." << std::endl;
+                std::cerr << "Could not estimate a planar mode   l for the given dataset." << std::endl;
                 break;
             }
 
@@ -230,15 +230,7 @@ public:
             extract.filter(*cloud_f);
             *cloud_filtered = *cloud_f;
         }
-<<<<<<< HEAD
 
-=======
-        //std::cerr << "Between IFS" << std::endl;
-        // sensor_msgs::PointCloud2 out;
-
-        // pcl::toROSMsg(*cloud_filtered, out);
-        // c_pub.publish(out);
->>>>>>> aeb106d4c23ca1fd288a7850ffc9f00cbb08fff3
 
 
         if(cloud_filtered->width*cloud_filtered->height != 0 ){
@@ -258,11 +250,7 @@ public:
             //find objects and put them in a new separate point cloud. only takes the objects that consist of 900-3000 particles
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
             if(cluster_indices.begin() == cluster_indices.end()){
-<<<<<<< HEAD
                // std::cerr << "samma" << std::endl;
-=======
-                std::cout << "samma" << std::endl;
->>>>>>> aeb106d4c23ca1fd288a7850ffc9f00cbb08fff3
             }else{
                 int j = 0;
                 plane_extraction::BoundingBox_FloatArray bbox_array_msg;
@@ -270,7 +258,7 @@ public:
                  //std::cerr << "==========================New Set====================================" << std::endl;
                 for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
                 {
-                    std::cout << "==========================New Cluster====================================" << std::endl;
+                    std::cerr << "==========================New Cluster====================================" << std::endl;
                     //uncomment this and comment the previous declaration if you only want the "newest" object to be found
                     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -385,7 +373,7 @@ public:
                        isObject = 12;
                        break;
                    case 12:
-                       color = "debris";
+                       color = "garbage";
                        if(cloud_cluster->points.size()<350){
                            isObject = 14;
                        }else if(cloud_cluster->points.size() > 350){
@@ -418,13 +406,6 @@ public:
                             pcl::toROSMsg(*cloud_cluster, out);
                             c_pub.publish(out);
                         }
-<<<<<<< HEAD
-=======
-                    }
-                    std::cout<<"color: "<< color<<std::endl;
-                    if(color == "red"||color == "green"||color=="blue"||color=="orange"||color=="yellow"||color=="purple"){
-
->>>>>>> aeb106d4c23ca1fd288a7850ffc9f00cbb08fff3
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;
                         pcl::compute3DCentroid(*cloud_cluster, centroid);
@@ -434,16 +415,7 @@ public:
 
                         if(centroid[2] < 1 ){
                             // build the condition
-<<<<<<< HEAD
                             std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
-=======
-
-                            /*std::cout << "The XYZ coordinates of the centroid are: ("
-                                  << centroid[0] << ", "
-                                  << centroid[1] << ", "
-                                  << centroid[2] << ")." << std::endl;*/
-                            std::cout << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
->>>>>>> aeb106d4c23ca1fd288a7850ffc9f00cbb08fff3
 
 
 
@@ -501,7 +473,7 @@ public:
                                 pkt.z = centroid[1];
 
                                 pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x));
-                               std::cout << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
+                               std::cerr << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
 
                                 //obj_loc_pub.publish(pkt);
                                 point_array.polygon.points.push_back(pkt);
