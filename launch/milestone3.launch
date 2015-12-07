@@ -18,6 +18,5 @@
   <include file="$(find bb_comparison)/launch/obj_find.launch" />
 
   <node pkg = "ras_espeak" type = "espeak_node" respawn = "false" name = "espeak_node" output = "log"/>
-  <include file="$(find logic)/launch/explore.launch" />
   
 </launch> 
