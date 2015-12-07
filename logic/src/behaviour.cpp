@@ -176,6 +176,10 @@ void fetch(void)
     if(!goalSet){
         fb->reportState("New fetching goal.", 2);
       goal = fb->fetchNext();
+      // If there is no object left in the fetching stack, get out.
+      if(goal.position.z > 1.0){
+          break;
+      }
       fb->go2goal(goal);
       goalSet = true;
     }
