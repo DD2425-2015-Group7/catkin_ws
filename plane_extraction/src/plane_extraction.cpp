@@ -44,9 +44,9 @@ class Plane_Extraction{
     ros::Publisher obj_loc_pub;
     ros::Publisher bb_publish;
     ros::Publisher i_pub;
-    //ros::Subscriber c_sub;
-    //ros::Subscriber b_box;
-
+    std::vector<std::vector<int> > class_color_avg;
+    int nmr_classes;
+    std::vector<std::string> color_v;
 public:
 
     void run(){
@@ -55,57 +55,74 @@ public:
 
         c_pub = n.advertise<sensor_msgs::PointCloud2> ("/clustered_object_cloud", 1);
         obj_loc_pub = n.advertise<geometry_msgs::PolygonStamped>("/object_point/uncompared",20);
-        bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
+        //bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
         i_pub = n.advertise<sensor_msgs::Image> ("/object_detection/Image",20);
 
-        //std::cerr << "in the initialization "<< std::endl;
-
-        //std::cerr << "After Register" << std::endl;
-
-        // c_sub = n.subscribe ("/camera/depth_registered/points", 1, &Plane_Extraction::cloud_callback, this);
         message_filters::Subscriber<sensor_msgs::PointCloud2> Cloud(n, "/camera/depth_registered/points", 30);
         message_filters::Subscriber<sensor_msgs::Image> image(n, "/camera/rgb/image_rect_color",30);
         Synchronizer<Policy> sync(Policy(50),Cloud, image);
 
-        //std::cerr << "before callback " << std::endl;
         sync.registerCallback(boost::bind(&Plane_Extraction::cloud_callback,this, _1, _2));
         ros::Rate loop_rate(15);
 
         ros::spin ();
         loop_rate.sleep();
     }
-
-    /*std::vector<int> indexToCoordinates(int index, pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr cloud)
+    float e_dist(std::vector<int> c_ref, std::vector<int> c_local)
     {
-        int x = 1, y = 1;
-        std::vector<int> coord;
-        while (index >= (cloud->width))
+        float Sum;
+        float distance;
+        //std::cerr << "The reference's size: " << c_ref.size() << std::endl;
+        for(int i=0;i<c_ref.size();i++)
         {
-            index -= (cloud->width);
-            x++;
+            Sum = Sum + (c_ref[i]-c_local[i])*(c_ref[i]-c_local[i]);
+            distance = sqrt(Sum);
         }
-        y = index + 1;
-        coord.push_back(x);
-        coord.push_back(y);
-        std::cout << "The pixel is " << x << "," << y << std::endl;
-        return coord;
-    }*/
 
+        return distance;
+    }
+    void reader(const char avgFile[]){
+        //initialize avg, weights, bias,
+        class_color_avg.clear();
+        nmr_classes = 10;
+        std::ifstream ifs(avgFile);
+        assert(ifs.is_open());
+        int ff;
+        int dim = 3;
+        try {
 
+            for(int i = 0; i<nmr_classes; i++){
+                std::vector<int> temp;
+                for(int j = 0; j<dim; j++){
+                    ifs>>ff;
+                    temp.push_back(ff);
 
+                }
+                class_color_avg.push_back(temp);
+
+            }
+        } catch (...){
+
+            std::cerr << "error in load" << std::endl;
+
+        }
+
+    }
 
     void PassFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr input, pcl::PointCloud<pcl::PointXYZRGB>::Ptr output,int xmin,int xmax,int ymin,int ymax){
-        pcl::PassThrough<pcl::PointXYZRGB> filterx;
+
         pcl::PassThrough<pcl::PointXYZRGB> filtery;
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr smaller_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-        filterx.setFilterFieldName("x");
+
         pcl::PointCloud<pcl::PointXYZRGB> cloud;
         cloud = *input;
+
         float ymin1 = -0.1;
         float ymax1 = 0.06; //0.12
         float xmin1 = -0.16;
         float xmax1 = 0.16;
+
         filtery.setFilterFieldName("y");
         filtery.setFilterLimitsNegative (false);
         filtery.setInputCloud(input);
@@ -130,12 +147,15 @@ public:
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZRGB>), cloud_p(new pcl::PointCloud<pcl::PointXYZRGB>), cloud_f(new pcl::PointCloud<pcl::PointXYZRGB>);
 
         pcl::PointCloud<pcl::PointXYZRGB> cloud_blob_test;
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZRGB>);
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr init_cloud (new pcl::PointCloud<pcl::PointXYZRGB>);
 
         pcl::fromROSMsg(*msg,*init_cloud);
         pcl::fromROSMsg(*msg,cloud_blob_test);
-        sensor_msgs::Image i_to_pub;
+
+        sensor_msgs::Image i_to_pub; //publish the image...
+        std::string color_path = "/home/ras27/Documents/averageAll.csv";
+
+        reader(color_path.c_str());
 
         // std::cerr << "msg_b->bounding_boxes.size() "<< msg_b->bounding_boxes.size() << std::endl;
 
@@ -181,9 +201,9 @@ public:
         // Create the filtering object
         pcl::ExtractIndices<pcl::PointXYZRGB> extract;
 
-        int i = 0, nr_points = (int)cloud_filtered->points.size();
-        // While 30% of the original cloud is still there
-        while (cloud_filtered->points.size() > 0.1 * nr_points)
+        int nr_points = (int)cloud_filtered->points.size();
+        // While 10% of the original cloud is still there
+        while (cloud_filtered->points.size() > 0.2 * nr_points)
         {
            // std::cerr << "Entered Plane While "<< std::endl;
 
@@ -210,11 +230,7 @@ public:
             extract.filter(*cloud_f);
             *cloud_filtered = *cloud_f;
         }
-        //std::cerr << "Between IFS" << std::endl;
-        sensor_msgs::PointCloud2 out;
 
-        pcl::toROSMsg(*cloud_filtered, out);
-        c_pub.publish(out);
 
 
         if(cloud_filtered->width*cloud_filtered->height != 0 ){
@@ -234,7 +250,7 @@ public:
             //find objects and put them in a new separate point cloud. only takes the objects that consist of 900-3000 particles
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
             if(cluster_indices.begin() == cluster_indices.end()){
-                std::cerr << "samma" << std::endl;
+               // std::cerr << "samma" << std::endl;
             }else{
                 int j = 0;
                 plane_extraction::BoundingBox_FloatArray bbox_array_msg;
@@ -249,7 +265,7 @@ public:
                     int r = 0;
                     int g = 0;
                     int b = 0;
-                    int rgb = 0;
+
                     for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); ++pit){
                         cloud_cluster->points.push_back (cloud_filtered->points[*pit]); //
                         cloud->points.push_back(cloud_filtered->points[*pit]);
@@ -262,96 +278,134 @@ public:
                     g = g/cloud_cluster->points.size();
                     b = b/cloud_cluster->points.size();
 
-
-
-                    int color1 = r + 1000*g + 100000*b;
-
-                    //std::cerr << "skit" << color1 << std::endl;
                     std::string color;
 
-                    int index = 0;
+                   // int index = 0;
                     int R = int(r);
-                    int RG = int((r + g)/2);
+                    //int RG = int((r + g)/2);
                     int G = int(g);
-                    int GB = int((g+b)/2);
+                   // int GB = int((g+b)/2);
                     int B = int(b);
-                    int BR = int((b+r)/2);
-                    int RGB = int((r+g+b)/3);
-                    std::vector<int> clrwheel;
+                    //int BR = int((b+r)/2);
+                    //int RGB = int((r+g+b)/3);
 
-                    clrwheel.push_back(R);
-                    clrwheel.push_back(G);
-                    clrwheel.push_back(B);
-                    clrwheel.push_back(RG);
-                    clrwheel.push_back(GB);
-                    clrwheel.push_back(BR);
-                    int max=clrwheel[0];
+                    std::vector<int> cluster_color;
 
-                    for (int i = 0; i < clrwheel.size(); i++) {
-                        if (clrwheel[i] > max) {
+                    cluster_color.push_back(R);
 
-                            max = clrwheel[i];
-                            index = i;
-                            //std::cerr << "i: " << i << std::endl;
+                    cluster_color.push_back(G);
+
+                    cluster_color.push_back(B);
+
+
+                    float current_dist;
+                    float dist = 85;
+                    float current_max = 30;
+                    int color_index = 12;
+                    float temp_to_print = 255;
+                   for(int o = 0; o<class_color_avg.size();o++){
+                       current_dist = e_dist(class_color_avg[o], cluster_color);
+                       if(temp_to_print>current_dist){
+                           temp_to_print = current_dist;
+                       }
+                       if(current_dist < dist ){
+                       //    if(current_dist<current_max){
+                               current_max = current_dist;
+                               color_index = o;
+
+
+                         //  }else{
+                           //    color_index = 13;
+
+                          // }
+
+                       }
+                   }
+                   std::cerr << "the Error is: " << temp_to_print << std::endl;
+                   switch(color_index){
+                   case 0:
+                       color = "Red Cube";
+                       isObject = 1;
+                       break;
+                   case 1:
+                       color = "Red Hollow Cube";
+                       isObject = 2;
+                       break;
+                   case 2:
+                       color = "Blue Cube";
+                       isObject = 3;
+                       break;
+                   case 3:
+                       color = "Green Cube";
+                       isObject = 4;
+                       break;
+                   case 4:
+                       color = "Yellow Cube";
+                       isObject = 5;
+                       break;
+                   case 5:
+                       color = "Yellow Ball";
+                       isObject =6;
+                       break;
+                   case 6:
+                       color = "Red Ball";
+                       isObject = 7;
+                       break;
+                   case 7:
+                       color = "Green Cylinder";
+                       isObject = 8;
+                       break;
+                   case 8:
+                       color = "Blue Triangle";
+                       isObject = 9;
+                       break;
+                   case 9:
+                       color = "Purple Cross";
+                       isObject = 10;
+                       break;
+                   case 10:
+//                     color = "Purple Star";
+                       color = "garbage";
+                       isObject = 11;
+                       break;
+                   case 11:
+                       color = "Patric";
+                       isObject = 12;
+                       break;
+                   case 12:
+                       color = "debris";
+                       if(cloud_cluster->points.size()<350){
+                           isObject = 14;
+                       }else if(cloud_cluster->points.size() > 350){
+                           isObject = 13;
+                       } else{
+                           isObject = 14;
+                       }
+                       break;
+                   case 13:
+                       color = "garbage";
+                       isObject = 17;
+                       break;
+                   case 14:
+                       color = "garbage";
+                       isObject = 18;
+                       break;
+                   case 15:
+                       color = "garbage";
+                       isObject = 19;
+                       break;
+                   }
+
+
+                    if(color != "garbage"){
+                        sensor_msgs::PointCloud2 out;
+
+                        if(color != "debris"){
+                            std::cerr<<"color: "<< color<<std::endl;
+                            cloud_cluster->header = cloud_filtered->header;
+                            pcl::toROSMsg(*cloud_cluster, out);
+                            c_pub.publish(out);
                         }
-
-                    }
-
-                    //std::cerr << "max: " << max << std::endl;
-                    //std::cerr << "index: " << index << std::endl;
-                    if(RGB > 230){
-                        color = "white";
-                    }else if(RGB < 50){
-                        color = "black";
-                        isObject = 7;
-                    }else if(RGB < 75 || cloud_cluster->size()>300){
-                        color = "gray";
-                        if(cloud_cluster->points.size()<350){
-                            isObject = 9;
-                        }else if(cloud_cluster->points.size() > 350){
-                            isObject = 8;
-                        } else{
-                            isObject = 6;
-                        }
-
-                    }else{
-                        switch(index){
-                        case 0:
-                            color = "red";
-                            isObject = 0;
-                            break;
-                        case 1:
-                            color = "green";
-                            isObject = 1;
-                            break;
-                        case 2:
-                            color = "blue";
-                            isObject = 2;
-                            break;
-                        case 3:
-                            color = "orange";
-                            isObject = 3;
-                            break;
-
-                        case 4:
-                            color = "yellow";
-                            isObject = 4;
-                            break;
-                        case 5:
-                            color = "purple";
-                            isObject = 5;
-                            break;
-
-                        default:
-                            color = "white";
-                            break;
-
-
-                        }
-                    }
-                    std::cerr<<"color: "<< color<<std::endl;
-                    if(color == "red"||color == "green"||color=="blue"||color=="orange"||color=="yellow"||color=="purple"){
-
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;
                         pcl::compute3DCentroid(*cloud_cluster, centroid);
@@ -361,11 +415,6 @@ public:
 
                         if(centroid[2] < 1 ){
                             // build the condition
-
-                            /*std::cout << "The XYZ coordinates of the centroid are: ("
-                                  << centroid[0] << ", "
-                                  << centroid[1] << ", "
-                                  << centroid[2] << ")." << std::endl;*/
                             std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
 
 
@@ -374,29 +423,16 @@ public:
                             y_width = cloud_cluster->height + 20;
 
                             //Determine the dimension of the bounding box ===========================
-                           // std::cerr << "before if"<< std::endl;
 
                             if(cloud_cluster->points.size() > 100){
 
-
-                                Eigen::Vector4f min_pt, max_pt;
+                               /* Eigen::Vector4f min_pt, max_pt;
                                 pcl::getMinMax3D (*cloud_filtered,it->indices, min_pt, max_pt);
                                 double x_0_3D = min_pt[0];
                                 double y_0_3D = min_pt[1];
                                 double x_1_3D = max_pt[0];
                                 double y_1_3D = max_pt[1];
-
-
-                                /*for (pcl::PointCloud<pcl::PointXYZRGB>::iterator pit = cloud_filtered->points.begin(); pit < cloud_filtered->points.end (); ++pit){
-                        if(pit->x == x_0_3D){
-                            if(pit->y == y_0_3D){
-                                std::cerr << "det är samma " << std::endl;
-                            }
-
-                        }
-
-
-                    }*/
+                                 */
 
                                 //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
                                 plane_extraction::BoundingBox_Float bbox_msg;
@@ -407,7 +443,7 @@ public:
                                 std::vector<int> temp0;
                                 std::vector<int> temp1;
 
-                                x_0 = float(x_0_3D);
+                               /* x_0 = float(x_0_3D);
                                 x_1 = float(x_1_3D);
                                 y_0 = float(y_0_3D);
                                 y_1 = float(y_1_3D);
@@ -415,7 +451,7 @@ public:
                                 bbox_msg.x0 = x_0;
                                 bbox_msg.y0 = y_0;
                                 bbox_msg.x1 = x_1;
-                                bbox_msg.y1 = y_1;
+                                bbox_msg.y1 = y_1;*/
                                 //std::cerr << "the points bb: "<< "("<<x_0<< ", " << y_0<<", " << x_1 << ", " << y_1 << ")" << std::endl;
 
 
@@ -426,14 +462,10 @@ public:
                                 }else{
                                     isObject = 1;
                                 }*/
-
                                 bbox_msg.prob = float(isObject);
 
                                 bbox_array_msg.bounding_boxes.push_back(bbox_msg);
-                                /*cloud_cluster->height = 1;
 
-                            cloud_cluster->is_dense = true;
-                            cloud_cluster->width = cloud->points.size ();*/
                                 geometry_msgs::Point32 pkt;
 
                                 pkt.x = centroid[2]; //in the robot coordinate, needs to be done in TF, maybe array to fit with bounding box??
@@ -442,11 +474,6 @@ public:
 
                                 pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x));
                                std::cerr << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
-
-
-                                //what to publish: bounding box : bb message,< publishes in the same msg. done
-                                //centroid : geometry_msgs/Point.msg done    |
-                                // and isObject : std_msgs/Bool.msg. --------|
 
                                 //obj_loc_pub.publish(pkt);
                                 point_array.polygon.points.push_back(pkt);
@@ -465,12 +492,13 @@ public:
                 //c_pub.publish(out);
 
                 obj_loc_pub.publish(point_array);
-                //i_to_pub.header = point_array.header;
+
                 i_pub.publish(i_to_pub);
-                bb_publish.publish(bbox_array_msg);
+                //bb_publish.publish(bbox_array_msg);
                 //std::cout <<"number of clusters " << j << std::endl;
             }
         }
+
         // }
 
 
