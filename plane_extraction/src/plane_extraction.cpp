@@ -45,7 +45,7 @@ class Plane_Extraction{
     ros::Publisher bb_publish;
     ros::Publisher i_pub;
     std::string color_path;
-    std::vector<std::vector<int> > class_color_avg;
+    std::vector<std::vector<float> > class_color_avg;
     int nmr_classes;
     std::vector<std::string> color_v;
 public:
@@ -70,31 +70,53 @@ public:
         ros::spin ();
         loop_rate.sleep();
     }
-    float e_dist(std::vector<int> c_ref, std::vector<int> c_local)
+    float e_distf(std::vector<float> c_ref, std::vector<int> c_local)
     {
         float Sum;
         float distance;
         //std::cerr << "The reference's size: " << c_ref.size() << std::endl;
+        std::vector<float> temp;
+        float s = sqrt((c_local[0]*c_local[0] + c_local[1]*c_local[1] + c_local[2]*c_local[2]));
+        //std::cerr << "s: " << s << std::endl;
+
+        for(int j = 0; j<c_local.size(); j++){
+            temp.push_back(float(c_local[j])/s);
+        }
+        //std::cerr << "c :" << float(temp[0]) << "r: "<< float(c_ref[0])<< std::endl;
+        //std::cerr << temp.size() << std::endl;
         for(int i=0;i<c_ref.size();i++)
         {
-            Sum = Sum + (c_ref[i]-c_local[i])*(c_ref[i]-c_local[i]);
+            Sum = Sum + (c_ref[i]-temp[i])*(c_ref[i]-temp[i]);
             distance = sqrt(Sum);
         }
-
+       // std::cerr << "dist: " << distance << std::endl;
         return distance;
     }
+    float e_dist(std::vector<int> c_ref, std::vector<int> c_local)
+       {
+           float Sum;
+           float distance;
+           //std::cerr << "The reference's size: " << c_ref.size() << std::endl;
+           for(int i=0;i<c_ref.size();i++)
+           {
+               Sum = Sum + (c_ref[i]-c_local[i])*(c_ref[i]-c_local[i]);
+               distance = sqrt(Sum);
+           }
+
+           return distance;
+       }
     void reader(const char avgFile[]){
         //initialize avg, weights, bias,
         class_color_avg.clear();
         nmr_classes = 16;
         std::ifstream ifs(avgFile);
         assert(ifs.is_open());
-        int ff;
+        float ff;
         int dim = 3;
         try {
 
             for(int i = 0; i<nmr_classes; i++){
-                std::vector<int> temp;
+                std::vector<float> temp;
                 for(int j = 0; j<dim; j++){
                     ifs>>ff;
                     temp.push_back(ff);
@@ -302,18 +324,20 @@ public:
 
                     float current_dist;
                     float dist = 85;
-                    float current_max = 30;
-                    int color_index = 12;
+                    float current_max = class_color_avg[0][0];
+                    int color_index = 0;
                     float temp_to_print = 255;
                    for(int o = 0; o<class_color_avg.size();o++){
-                       current_dist = e_dist(class_color_avg[o], cluster_color);
+                       current_dist = e_distf(class_color_avg[o], cluster_color);
                        if(temp_to_print>current_dist){
                            temp_to_print = current_dist;
+                           color_index = o;
+                           current_max = current_dist;
+
                        }
-                       if(current_dist < dist ){
+                       //if(current_dist < dist ){
                        //    if(current_dist<current_max){
-                               current_max = current_dist;
-                               color_index = o;
+
 
 
 
@@ -322,7 +346,7 @@ public:
 
                           // }
 
-                       }
+                      // }
                    }
 
                    switch(color_index){
@@ -398,7 +422,7 @@ public:
                        isObject = 19;
                        break;
                    }
-                    std::cerr << "clasS: " << isObject << std::endl;
+                    std::cerr << "class: " << isObject << std::endl;
 
                     if(color != "garbage"){
                         sensor_msgs::PointCloud2 out;
