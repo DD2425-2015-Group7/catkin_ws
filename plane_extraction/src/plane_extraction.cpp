@@ -53,7 +53,8 @@ public:
     void run(){
         using namespace message_filters;
         typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::PointCloud2,sensor_msgs::Image> Policy;
-        n.param<std::string>("linear_classifier_model_file", color_path, "/home/ras27/Documents/averageAll.csv");
+        //n.param<std::string>("~average_file", color_path, "");
+        ros::param::get("~average_file",color_path);
         c_pub = n.advertise<sensor_msgs::PointCloud2> ("/clustered_object_cloud", 1);
         obj_loc_pub = n.advertise<geometry_msgs::PolygonStamped>("/object_point/uncompared",20);
         //bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
@@ -375,7 +376,7 @@ public:
                        isObject = 12;
                        break;
                    case 12:
-                       color = "debris";
+                       color = "garbage";
                        if(cloud_cluster->points.size()<350){
                            isObject = 14;
                        }else if(cloud_cluster->points.size() > 350){
@@ -402,7 +403,7 @@ public:
                     if(color != "garbage"){
                         sensor_msgs::PointCloud2 out;
 
-                        if(color != "debris"){
+                       // if(color != "debris"){
                             std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
 
                             std::cerr << "the Error is: " << temp_to_print << std::endl;
@@ -411,7 +412,7 @@ public:
                             cloud_cluster->header = cloud_filtered->header;
                             pcl::toROSMsg(*cloud_cluster, out);
                             c_pub.publish(out);
-                        }
+                        //}
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;
                         pcl::compute3DCentroid(*cloud_cluster, centroid);
