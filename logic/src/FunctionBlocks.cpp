@@ -703,6 +703,9 @@ geometry_msgs::Pose FunctionBlocks::fetchNext(void)
     p.position.x = 0;
     p.position.y = 0;
     p.position.z = 2.0;
+    p.orientation.x = p.orientation.y = 0;
+    p.orientation.z = 0;
+    p.orientation.w = 1.0;
     if(objects2visit->objects.size() < 1)
         return p;
     p = objects2visit->objects[0].viewPose;
