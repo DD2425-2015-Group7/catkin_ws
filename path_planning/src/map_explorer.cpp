@@ -143,7 +143,7 @@ void nextExplore(int upRight,int upLeft,int downRight,int downLeft, int rowIndex
    if(downRight)
    {
        //find the furtherest cell in the up-Right direction
-        for(int i = rowIndex; i < rowSie; i++)
+        for(int i = rowIndex; i < rowSize; i++)
         {
             for(int j = colIndex; j < colSize; j++)
             {
