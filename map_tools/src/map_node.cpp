@@ -1,4 +1,5 @@
 #include "ros/ros.h"
+#include "std_msgs/Int32.h"
 #include "geometry_msgs/Pose.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "tf/transform_listener.h"
@@ -23,6 +24,8 @@
 std::string mapFrame, wallFile;
 double wallThickness, inflationRadius, cellSize;
 
+//Current version of the map, increments with every load/add object call.
+int version = 0;
 MapStorage *ms, *mso;
 classification::ClassifiedObjectArray *clsObj;
 
@@ -105,6 +108,7 @@ bool addObjects(map_tools::AddObjects::Request  &req,
     }
     ROS_INFO("map_node rendering");
     mso->renderGrid();
+    version += 1;
     return true;
 }
 
@@ -132,7 +136,6 @@ classification::ClassifiedObjectArray loadObjects(std::string bagFile, std::stri
             
     }
     bag.close();
-    assert(ob.objects.size()>0);
     return ob;
     
 }
@@ -151,6 +154,7 @@ bool objectStorage(map_tools::ObjectStorage::Request  &req,
     if(req.action.compare("load") == 0){
         ROS_INFO("map_node Loading objects...");
         *clsObj = loadObjects(req.bag_file, "/mapped_objects");
+        version += 1;
     }else if(req.action.compare("store") == 0){
         ROS_INFO("map_node Storing objects...");
         storeObjects(req.bag_file, "/mapped_objects", *clsObj);
@@ -277,6 +281,7 @@ int main(int argc, char **argv)
     map.header.frame_id = mapFrame;
     map.header.stamp = current_time;
     ros::Publisher map_pub_obj = n.advertise<nav_msgs::OccupancyGrid>("/map", 2, true);
+    ros::Publisher map_version_pub = n.advertise<std_msgs::Int32>("/map_node/version", 2);
     vis_pub = new ros::Publisher();
     *vis_pub = n.advertise<visualization_msgs::MarkerArray>("/map_node/objects", 1 );
     clsObj = new classification::ClassifiedObjectArray();
@@ -288,6 +293,8 @@ int main(int argc, char **argv)
     
     mso->loadWalls(wallFile, wallThickness);
     mso->renderGrid();
+    
+    version += 1;
 
     ros::ServiceServer ellipse_srv = n.advertiseService("add_ellipse", addEllipse);
     ros::ServiceServer obj_srv = n.advertiseService("add_objects", addObjects);
@@ -315,6 +322,9 @@ int main(int argc, char **argv)
             map_pub_obj.publish(map);
             counter = 0;
         }
+        std_msgs::Int32 vmsg;
+        vmsg.data = version;
+        map_version_pub.publish(vmsg);
         publishObjects();
 		ros::spinOnce(); // Run the callbacks.
 		loop_rate.sleep();
