@@ -37,6 +37,7 @@ struct Poses{
     double x = 0.0, y = 0.0, th = 0.0;
 };
 struct Poses coords;
+tf::Stamped<tf::Pose> odom2map;
 ros::Time current_time;
 
 tf::TransformBroadcaster *tf_broadcaster;
@@ -49,6 +50,8 @@ OdometryModel *om;
 RangeModel *irm;
 struct PoseState odomState;
 std::vector<RangeModel::Reading> irReadings;
+
+tf::Stamped<tf::Pose> mclTransform(void);
 
 void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sensors::RangeArray::ConstPtr& ir_msg)
 {
@@ -179,9 +182,9 @@ void initMcl(const geometry_msgs::Pose::ConstPtr& p)
     double csz = mapInflated->info.resolution;
     double wc = ((double)mapInflated->info.width);
     double hc = ((double)mapInflated->info.height);
+    struct PoseState pose;
     assert(csz > 0.00001);
     if(p->position.z < 0.01){
-        struct PoseState pose;
         pose.set(0);
         pose.x = p->position.x;
         pose.y = p->position.y;
@@ -193,6 +196,10 @@ void initMcl(const geometry_msgs::Pose::ConstPtr& p)
         ROS_INFO("MCL init unknown.");
     }
     mclEnabled = true;
+    coords.x = pose.x;
+    coords.y = pose.y;
+    coords.th = pose.yaw;
+    odom2map = mclTransform();
 }
 
 bool runMonteCarlo(void)
@@ -385,7 +392,6 @@ int main(int argc, char **argv)
     if(!updateMap())
         return -1;
     
-    tf::Stamped<tf::Pose> odom2map;
     odom2map = mclTransform();
     struct PoseState odom0;
     bool firstMcl = true;
