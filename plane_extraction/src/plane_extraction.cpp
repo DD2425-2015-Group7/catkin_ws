@@ -240,7 +240,7 @@ public:
 
             std::vector<pcl::PointIndices> cluster_indices;
             pcl::EuclideanClusterExtraction<pcl::PointXYZRGB> ec;
-            ec.setClusterTolerance (0.01); // 1cm
+            ec.setClusterTolerance (0.008); // 1cm
             ec.setMinClusterSize (100);
             ec.setMaxClusterSize (400);
             ec.setSearchMethod (tree);
@@ -314,6 +314,7 @@ public:
                                color_index = o;
 
 
+
                          //  }else{
                            //    color_index = 13;
 
@@ -321,7 +322,7 @@ public:
 
                        }
                    }
-                   std::cerr << "the Error is: " << temp_to_print << std::endl;
+
                    switch(color_index){
                    case 0:
                        color = "Red Cube";
@@ -373,7 +374,7 @@ public:
                        isObject = 12;
                        break;
                    case 12:
-                       color = "garbage";
+                       color = "debris";
                        if(cloud_cluster->points.size()<350){
                            isObject = 14;
                        }else if(cloud_cluster->points.size() > 350){
@@ -401,6 +402,10 @@ public:
                         sensor_msgs::PointCloud2 out;
 
                         if(color != "debris"){
+                            std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
+
+                            std::cerr << "the Error is: " << temp_to_print << std::endl;
+
                             std::cerr<<"color: "<< color<<std::endl;
                             cloud_cluster->header = cloud_filtered->header;
                             pcl::toROSMsg(*cloud_cluster, out);
@@ -415,7 +420,6 @@ public:
 
                         if(centroid[2] < 1 ){
                             // build the condition
-                            std::cerr << "PointCloud representing the Cluster: " << cloud_cluster->points.size () << " data points." << std::endl;
 
 
 
@@ -473,7 +477,7 @@ public:
                                 pkt.z = centroid[1];
 
                                 pkt.x = pkt.x*cos(atan2(pkt.z,pkt.x));
-                               std::cerr << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
+                             //  std::cerr << "coordinate of cluster: (" << pkt.x << ", " << pkt.y << ", " << pkt.z << ")"<<std::endl;
 
                                 //obj_loc_pub.publish(pkt);
                                 point_array.polygon.points.push_back(pkt);
