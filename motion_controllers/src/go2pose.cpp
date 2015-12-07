@@ -71,6 +71,9 @@ int wallAvailable(void)
     // 0 none, -1 left, 1 right
     if(!wallFollowingEnabled)
         return 0;
+        
+    if(!irReceived)
+        return 0;
     
     if(distance_rights_front > irSideMin && distance_rights_front < irSideMax
         && distance_rights_back > irSideMin && distance_rights_back < irSideMax){
@@ -91,6 +94,8 @@ int wallAvailable(void)
 
 double followWall(int wall)
 {
+    if(!irReceived)
+        return 0;
     if(!wallFollowingEnabled || wall == 0)
         return 0;
 
