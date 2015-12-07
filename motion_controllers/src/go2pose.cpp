@@ -231,7 +231,7 @@ int main(int argc, char *argv[])
         
         //TODO: test if wall checking prevents reaching the desired goal.
         // If that is the case, integrate pub_points_list and go2pose into one node.
-        if(distance > tolDistL && distance < frontWallDist() && !turningEnabled){
+        if((distance > tolDistL) && (frontWallDist() > 0) && !turningEnabled){
             curs = fw;
             goForward(dt);
         }else if(distance > tolDistH && turningEnabled){
