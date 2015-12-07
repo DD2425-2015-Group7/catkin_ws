@@ -8,11 +8,17 @@
 
 #include "map_tools/AddEllipse.h"
 #include "map_tools/AddObjects.h"
+#include "map_tools/ObjectStorage.h"
 #include "map_tools/GetMap.h"
 #include "classification/ClassifiedObjectArray.h"
 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#include <boost/foreach.hpp>
+#define foreach BOOST_FOREACH
 
 std::string mapFrame, wallFile;
 double wallThickness, inflationRadius, cellSize;
@@ -99,6 +105,59 @@ bool addObjects(map_tools::AddObjects::Request  &req,
     }
     ROS_INFO("map_node rendering");
     mso->renderGrid();
+    return true;
+}
+
+classification::ClassifiedObjectArray loadObjects(std::string bagFile, std::string topic)
+{
+    classification::ClassifiedObjectArray ob;
+    
+    rosbag::Bag bag;
+    bag.open(bagFile, rosbag::bagmode::Read);
+
+    std::vector<std::string> topics;
+    topics.push_back(topic);
+
+    rosbag::View view(bag, rosbag::TopicQuery(topics));
+
+    foreach(rosbag::MessageInstance const m, view)
+    {
+        classification::ClassifiedObjectArray::ConstPtr p = m.instantiate<classification::ClassifiedObjectArray>();
+        if (p == NULL)
+            continue;
+        if(p->objects.size()>0){
+            ob = *p;
+            break;
+        }
+            
+    }
+    bag.close();
+    assert(ob.objects.size()>0);
+    return ob;
+    
+}
+
+void storeObjects(std::string bagFile, std::string topic, classification::ClassifiedObjectArray ob)
+{
+    rosbag::Bag bag;
+    bag.open(bagFile, rosbag::bagmode::Write);
+    bag.write(topic, ros::Time::now(), ob); // The timestamp can be left out.
+    bag.close();
+}
+
+bool objectStorage(map_tools::ObjectStorage::Request  &req,
+         map_tools::ObjectStorage::Response &res)
+{
+    if(req.action.compare("load") == 0){
+        ROS_INFO("map_node Loading objects...");
+        *clsObj = loadObjects(req.bag_file, "/mapped_objects");
+    }else if(req.action.compare("store") == 0){
+        ROS_INFO("map_node Storing objects...");
+        storeObjects(req.bag_file, "/mapped_objects", *clsObj);
+    }else{
+        ROS_ERROR("map_node Invalid object storage action chosen!");
+        return false;
+    }
     return true;
 }
 
@@ -232,6 +291,7 @@ int main(int argc, char **argv)
 
     ros::ServiceServer ellipse_srv = n.advertiseService("add_ellipse", addEllipse);
     ros::ServiceServer obj_srv = n.advertiseService("add_objects", addObjects);
+    ros::ServiceServer obst_srv = n.advertiseService("object_storage", objectStorage);
     ros::ServiceServer map_srv = n.advertiseService("get_map", getMap);
 
     tf::TransformBroadcaster broadcaster_obj;

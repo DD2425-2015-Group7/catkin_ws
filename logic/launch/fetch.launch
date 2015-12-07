@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+  <master auto="start"/>
+  
+  <node pkg="path_planning" type="Astar" respawn="false" name="Astar" output="log" required="true" />
+   
+  <node pkg="logic" type="behaviour" respawn="false" name="behaviour" output="screen" required="true">
+    <param name="logic_behaviour" value="fetch" />  
+    <param name="objects_bag_file" value="$(find logic)/data/saved_objects.bag" />
+  </node>
+  
+</launch> 

@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   tf
   message_generation
+  rosbag
 )
 
 ## System dependencies are found with CMake's conventions
@@ -60,6 +61,7 @@ add_service_files(
    FILES
    AddEllipse.srv
    AddObjects.srv
+   ObjectStorage.srv
    GetMap.srv
 )
 

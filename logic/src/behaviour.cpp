@@ -5,6 +5,7 @@ const int explorationTimeout = 90/*300*/, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
 const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
+std::string objects_bag;
 
 void localize(void)
 {
@@ -101,6 +102,7 @@ void explore(void)
     ros::spinOnce();
     loop_rate.sleep();
   } while( (ros::ok()) && (safetyTime + fb->time2goal(*startPose) < fb->secondsLeft()) );
+  fb->saveObjects(objects_bag);
   getOut();
 }
 
@@ -163,8 +165,9 @@ void fetch(void)
   bool goalSet = false;
   ros::Rate loop_rate(rate);
     
-    fb->reportState("Fetch.", 1);
+  fb->reportState("Fetch.", 1);
   fb->initUnknown();
+  fb->loadObjects(objects_bag);
   fb->openDoor();
   fb->startTimer(fetchingTimeout);
   localize();
@@ -203,6 +206,8 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "behaviour");
   ros::NodeHandle n("/behaviour");
+  
+  
     
   startPose = new geometry_msgs::Pose();
   startPose->position.x = 0.2;
@@ -213,6 +218,8 @@ int main(int argc, char **argv)
 
   std::string behaviour;
   n.param<std::string>("logic_behaviour", behaviour, "explore");
+  n.param<std::string>("objects_bag_file", objects_bag, "");
+  
   if(behaviour.compare("explore") == 0){
     explore();
   }else if(behaviour.compare("fetch") == 0){
@@ -223,9 +230,11 @@ int main(int argc, char **argv)
     // fb->testExploration();
     // fb->fetchNext();
     // fb->testAdd2Map();
+    // fb->saveObjects(objects_bag);
+    // fb->loadObjects(objects_bag);
     // fb->testTimer();
-    fb->testPathPlanning();
-     fb->testReporting();
+    // fb->testPathPlanning();
+    // fb->testReporting();
     }else if(behaviour.compare("explore_wall") == 0){
         exploreWall();
   }else{

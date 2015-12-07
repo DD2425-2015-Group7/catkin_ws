@@ -22,6 +22,12 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
         ROS_ERROR("Add objects to map service unreachable.");
         return;
     }
+    
+    //Wait 1 s for the add objects to map service.
+    if(!ros::service::waitForService("/map_node/object_storage", 1000)){ 
+        ROS_ERROR("Object storage service unreachable.");
+        return;
+    }
 
     
     //Wait 2 s for the path test service
@@ -30,8 +36,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
       return;
     }
 
-    //Wait 2 s for the points path execution
-    if(!ros::service::waitForService("/motion_controllers/PathPointsExec", 2000)){ 
+    //Wait 3 s for the points path execution
+    if(!ros::service::waitForService("/motion_controllers/PathPointsExec", 3000)){ 
       ROS_ERROR("PathPointsExec service unreachable.");
       return;
     }
@@ -46,6 +52,8 @@ FunctionBlocks::FunctionBlocks(ros::NodeHandle& n)
     *map_client = n.serviceClient<map_tools::GetMap>("/map_node/get_map");
     add_objects_client = new ros::ServiceClient();
     *add_objects_client = n.serviceClient<map_tools::AddObjects>("/map_node/add_objects");
+    object_storage_client = new ros::ServiceClient();
+    *object_storage_client = n.serviceClient<map_tools::ObjectStorage>("/map_node/object_storage");
     updateMap();
     
     getPath_client = new ros::ServiceClient();
@@ -901,3 +909,30 @@ void FunctionBlocks::testReporting(void)
         loop_rate.sleep();
     }
 }
+
+bool FunctionBlocks::loadObjects(std::string bagFile)
+{
+    map_tools::ObjectStorage srv;
+    srv.request.action = "load";
+    srv.request.bag_file = bagFile;
+    if (object_storage_client->call(srv)){
+        return true;
+    }else{
+        ROS_ERROR("Failed to call service ObjectStorage (load).");
+        return false;
+    }
+}
+
+bool FunctionBlocks::saveObjects(std::string bagFile)
+{
+    map_tools::ObjectStorage srv;
+    srv.request.action = "store";
+    srv.request.bag_file = bagFile;
+    if (object_storage_client->call(srv)){
+        return true;
+    }else{
+        ROS_ERROR("Failed to call service ObjectStorage (store).");
+        return false;
+    }
+}
+

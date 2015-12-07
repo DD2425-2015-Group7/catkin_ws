@@ -18,6 +18,7 @@
 #include "map_tools/AddEllipse.h"
 #include "map_tools/AddObjects.h"
 #include "map_tools/GetMap.h"
+#include "map_tools/ObjectStorage.h"
 
 #include "path_planning/GetPath.h" 
 
@@ -52,6 +53,9 @@ class FunctionBlocks
         void setViewPose(classification::ClassifiedObject& obj);
         void testAdd2Map(void);
         bool objectDetected(void);
+        bool loadObjects(std::string bagFile);
+        bool saveObjects(std::string bagFile);
+
         
         //Motion.
 	nav_msgs::Path getPath(geometry_msgs::Pose&);
@@ -102,7 +106,8 @@ class FunctionBlocks
         bool mclReady, mclLocalized;
         
         nav_msgs::OccupancyGrid *mapInflated;
-        ros::ServiceClient *map_client, *add_objects_client, *getPath_client, *getPathPoints_client;;
+        ros::ServiceClient *getPath_client, *getPathPoints_client;
+        ros::ServiceClient *map_client, *add_objects_client, *object_storage_client;
         ros::Publisher *init_mcl_pub;
         
         nav_msgs::Path *currentPath;
