@@ -198,7 +198,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   ROS_INFO("Processing start");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
   this->speak("Object detected"); 
-  this->speak(lastSeen.name);
+  
   std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
   double angle = atan2(lastSeen.p.y, lastSeen.p.x);
   std::cout << "Let's turn  " << angle << std::endl;
@@ -325,6 +325,10 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
     verifiedObjects.objects.push_back(it_obj->second);
   }
+  if(verifiedObjects.objects.size()>0)
+    this->speak(verifiedObjects.objects[0].name);
+  else
+    this->speak("Nothing detected");
   
   objDetectTimeout = 0;
   
