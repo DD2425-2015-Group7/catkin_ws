@@ -57,7 +57,7 @@ public:
         ros::param::get("~average_file",color_path);
         c_pub = n.advertise<sensor_msgs::PointCloud2> ("/clustered_object_cloud", 1);
         obj_loc_pub = n.advertise<geometry_msgs::PolygonStamped>("/object_point/uncompared",20);
-        //bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
+        bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
         i_pub = n.advertise<sensor_msgs::Image> ("/object_detection/Image",20);
 
         message_filters::Subscriber<sensor_msgs::PointCloud2> Cloud(n, "/camera/depth_registered/points", 30);
@@ -400,7 +400,7 @@ public:
                        isObject = 12;
                        break;
                    case 12:
-                       color = "garbage";
+                       color = "garbage"; //Keep it as garbage for now.. should be debris but would need more tuning/samples finds shadowed walls as debris
                        if(cloud_cluster->points.size()<350){
                            isObject = 14;
                        }else if(cloud_cluster->points.size() > 350){
@@ -445,10 +445,6 @@ public:
                         p.z = (double) centroid[2];
 
                         if(centroid[2] < 1 ){
-                            // build the condition
-
-
-
                             x_width = cloud_cluster->width + 20;
                             y_width = cloud_cluster->height + 20;
 
@@ -456,42 +452,8 @@ public:
 
                             if(cloud_cluster->points.size() > 70){
 
-                               /* Eigen::Vector4f min_pt, max_pt;
-                                pcl::getMinMax3D (*cloud_filtered,it->indices, min_pt, max_pt);
-                                double x_0_3D = min_pt[0];
-                                double y_0_3D = min_pt[1];
-                                double x_1_3D = max_pt[0];
-                                double y_1_3D = max_pt[1];
-                                 */
-
-                                //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
                                 plane_extraction::BoundingBox_Float bbox_msg;
-                                // cloud = *cloud_cluster;
-                                //std::cerr << "the points bb: "<< "("<<x_0_3D<< ", " << y_0_3D <<", " << x_1_3D << ", " << y_1_3D << ")" << std::endl;
 
-                                // =====================================================================
-                                std::vector<int> temp0;
-                                std::vector<int> temp1;
-
-                               /* x_0 = float(x_0_3D);
-                                x_1 = float(x_1_3D);
-                                y_0 = float(y_0_3D);
-                                y_1 = float(y_1_3D);
-                               // std::cerr << "after if"<< std::endl;
-                                bbox_msg.x0 = x_0;
-                                bbox_msg.y0 = y_0;
-                                bbox_msg.x1 = x_1;
-                                bbox_msg.y1 = y_1;*/
-                                //std::cerr << "the points bb: "<< "("<<x_0<< ", " << y_0<<", " << x_1 << ", " << y_1 << ")" << std::endl;
-
-
-
-                               /* if(cloud_cluster->points.size() > 5000){ //TBD
-                                    isObject = 0;
-                                    // std::cerr << "skräp vid: "<< "(" << centroid[0] << ", " << centroid[1] <<", " << centroid[2] << ")."<< std::endl;
-                                }else{
-                                    isObject = 1;
-                                }*/
                                 bbox_msg.prob = float(isObject);
 
                                 bbox_array_msg.bounding_boxes.push_back(bbox_msg);
