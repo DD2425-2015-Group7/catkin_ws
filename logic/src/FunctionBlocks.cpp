@@ -197,139 +197,139 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   //TODO: process also point p2_debris for debris.
   ROS_INFO("Processing start");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
-  this->speak("Object detected"); 
+  this->speak(lastSeen.name); 
   
-  std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
-  double angle = atan2(lastSeen.p.y, lastSeen.p.x);
-  std::cout << "Let's turn  " << angle << std::endl;
-  this->turn(angle);
-  ROS_INFO("Turn OK!");
+  // std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
+  // double angle = atan2(lastSeen.p.y, lastSeen.p.x);
+  // std::cout << "Let's turn  " << angle << std::endl;
+  // this->turn(angle);
+  // ROS_INFO("Turn OK!");
 
   // We reset the Array
-  objectsVision->objects.clear();
+  //objectsVision->objects.clear();
 
   classification::ClassifiedObjectArray verifiedObjects;
   
   verifiedObjects.header.frame_id = objectsVision->header.frame_id;
 
-  const int rate = 10;
-  ros::Rate loop_rate(rate);
-  int time2wait = 2; // in seconds
-  int i = 0;
-  
-  do {
-    ros::spinOnce();
-    i++;
-    loop_rate.sleep();
-  } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
-  
-  ROS_INFO("Waiting time finished");
-  
-  std::unordered_map<std::string,int> nbrObj;
-  std::unordered_map<std::string, int>::iterator it_nbr;
-  classification::ClassifiedObject current;
-  std::string classID;
-  std::stringstream streamx, streamy;
+  verifiedObjects.objects.push_back(lastSeen);
 
-  //Now, let's check what the objectVion Array contains
-  for (int j=0; j < objectsVision->objects.size() ; j++) {
-    // if the class of the current object is not present yet
-    
-    current = objectsVision->objects[j];
-    // Create the ID of the object
-    // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
-    // 1cm precision on x and y for the cells
-    streamx << std::fixed << std::setprecision(3) << current.p.x;
-    streamy << std::fixed << std::setprecision(3) << current.p.y;
-    classID = current.name + streamx.str() + streamy.str();
-    
-    it_nbr = nbrObj.find(classID);
-    
-    if ( it_nbr  == nbrObj.end() ) {
-      // We initialize the number of object of this class
-      nbrObj.insert(
-		    {{
-			classID,
-			  1
-			  }}
-		    );
-    } else {
-      // else, we increment the counter
-      nbrObj[classID] = nbrObj[classID] + 1;
-    }
-  }
+  // const int rate = 10;
+  // ros::Rate loop_rate(rate);
+  // int time2wait = 2; // in seconds
+  // int i = 0;
   
-  int objectsThreshold = 1;
+  // do {
+  //   ros::spinOnce();
+  //   i++;
+  //   loop_rate.sleep();
+  // } while ( (ros::ok()) && (i < (rate*time2wait)) ); // 2s to load the vision object 
   
-  std::unordered_map<std::string, classification::ClassifiedObject> objectsTable;
-  std::unordered_map<std::string, classification::ClassifiedObject>::iterator it_obj;
+  // ROS_INFO("Waiting time finished");
   
-  for (int j=0; j < objectsVision->objects.size() ; j++) {
-    // if the class of the current object is not present yet
-    current = objectsVision->objects[j];
-    // Create the ID of the object
-    // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
-    // 1cm precision on x and y for the cells
-    streamx << std::fixed << std::setprecision(3) << current.p.x;
-    streamy << std::fixed << std::setprecision(3) << current.p.y;
-    classID = current.name + streamx.str() + streamy.str();
-    
-    it_obj = objectsTable.find(classID);
-    
-    // We test if the number of object of this type present is big enough
-    if ( nbrObj[current.name] > objectsThreshold) {
-      if ( it_obj  == objectsTable.end() ) {
-	objectsTable.insert(
-			    {{
-				classID, 
-				  current
-				  }}
-			    );
-      } else {
-        
-	/******** TEST Don't do anything ********/
-	// //Average of the point
-	// objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
-	// objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
-	// objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
-	// //Average of the second debris point
-	// objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
-	// objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
-	// objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
-	// //Average of the bounding box
-	// objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
-	// objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
-	// objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
-	// objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
-	// // The other attributes of the ClassifiedObject can be taken from any object of the array
+  // std::unordered_map<std::string,int> nbrObj;
+  // std::unordered_map<std::string, int>::iterator it_nbr;
+  // classification::ClassifiedObject current;
+  // std::string classID;
+  // std::stringstream streamx, streamy;
 
-      }
-    }
-  }
-
-  // for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
-  //   objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
-  //   objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
-  //   objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
-      
-  //   objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
-  //   objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
-  //   objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
-  //   objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
+  // //Now, let's check what the objectVion Array contains
+  // for (int j=0; j < objectsVision->objects.size() ; j++) {
+  //   // if the class of the current object is not present yet
+    
+  //   current = objectsVision->objects[j];
+  //   // Create the ID of the object
+  //   // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
+  //   // 1cm precision on x and y for the cells
+  //   streamx << std::fixed << std::setprecision(3) << current.p.x;
+  //   streamy << std::fixed << std::setprecision(3) << current.p.y;
+  //   classID = current.name + streamx.str() + streamy.str();
+    
+  //   it_nbr = nbrObj.find(classID);
+    
+  //   if ( it_nbr  == nbrObj.end() ) {
+  //     // We initialize the number of object of this class
+  //     nbrObj.insert(
+  // 		    {{
+  // 			classID,
+  // 			  1
+  // 			  }}
+  // 		    );
+  //   } else {
+  //     // else, we increment the counter
+  //     nbrObj[classID] = nbrObj[classID] + 1;
+  //   }
   // }
+  
+  // int objectsThreshold = 1;
+  
+  // std::unordered_map<std::string, classification::ClassifiedObject> objectsTable;
+  // std::unordered_map<std::string, classification::ClassifiedObject>::iterator it_obj;
+  
+  // for (int j=0; j < objectsVision->objects.size() ; j++) {
+  //   // if the class of the current object is not present yet
+  //   current = objectsVision->objects[j];
+  //   // Create the ID of the object
+  //   // ClassID composed by the class of the oject, and the first 2 digits of the x and t coordinates // 1cm precision on x and y for the cells
+  //   // 1cm precision on x and y for the cells
+  //   streamx << std::fixed << std::setprecision(3) << current.p.x;
+  //   streamy << std::fixed << std::setprecision(3) << current.p.y;
+  //   classID = current.name + streamx.str() + streamy.str();
+    
+  //   it_obj = objectsTable.find(classID);
+    
+  //   // We test if the number of object of this type present is big enough
+  //   if ( nbrObj[current.name] > objectsThreshold) {
+  //     if ( it_obj  == objectsTable.end() ) {
+  // 	objectsTable.insert(
+  // 			    {{
+  // 				classID, 
+  // 				  current
+  // 				  }}
+  // 			    );
+  //     } else {
+        
+  // 	/******** TEST Don't do anything ********/
+  // 	// //Average of the point
+  // 	// objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
+  // 	// objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
+  // 	// objectsTable[current.name].p.z = objectsTable[current.name].p.y + current.p.z;
+  // 	// //Average of the second debris point
+  // 	// objectsTable[current.name].p2_debris.x = objectsTable[current.name].p2_debris.x + current.p2_debris.x;
+  // 	// objectsTable[current.name].p2_debris.y = objectsTable[current.name].p2_debris.y + current.p2_debris.y;
+  // 	// objectsTable[current.name].p2_debris.z = objectsTable[current.name].p2_debris.y + current.p2_debris.z;
+  // 	// //Average of the bounding box
+  // 	// objectsTable[current.name].bb.x0 = objectsTable[current.name].bb.x0 + current.bb.x0;
+  // 	// objectsTable[current.name].bb.x1 = objectsTable[current.name].bb.x1 + current.bb.x1;
+  // 	// objectsTable[current.name].bb.y0 = objectsTable[current.name].bb.y0 + current.bb.y0;
+  // 	// objectsTable[current.name].bb.y1 = objectsTable[current.name].bb.y1 + current.bb.y1;
+  // 	// // The other attributes of the ClassifiedObject can be taken from any object of the array
+
+  //     }
+  //   }
+  // }
+
+  // // for (  auto it = nbrObj.begin(); it != nbrObj.end(); ++it ) {
+  // //   objectsTable[it->first].p.x = objectsTable[current.name].p.x / it->second;
+  // //   objectsTable[it->first].p.y = objectsTable[current.name].p.y / it->second;
+  // //   objectsTable[it->first].p.z = objectsTable[current.name].p.y / it->second;
+      
+  // //   objectsTable[it->first].bb.x0 = objectsTable[current.name].bb.x0 / it->second; 
+  // //   objectsTable[it->first].bb.x1 = objectsTable[current.name].bb.x1 / it->second;
+  // //   objectsTable[it->first].bb.y0 = objectsTable[current.name].bb.y0 / it->second;
+  // //   objectsTable[it->first].bb.y1 = objectsTable[current.name].bb.y1 / it->second;
+  // // }
   
 
   // We reset the Array
   objectsVision->objects.clear();
 
-  for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
-    verifiedObjects.objects.push_back(it_obj->second);
-  }
-  if(verifiedObjects.objects.size()>0)
-    this->speak(verifiedObjects.objects[0].name);
-  else
-    this->speak("Nothing detected");
-  
+  // for (it_obj = objectsTable.begin(); it_obj != objectsTable.end(); ++it_obj ) {
+  //   verifiedObjects.objects.push_back(it_obj->second);
+  // }
+  // if(verifiedObjects.objects.size()>0)
+  //   this->speak(verifiedObjects.objects[0].name);
+
   objDetectTimeout = 0;
   
   return verifiedObjects;
