@@ -259,7 +259,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
     }
   }
   
-  int objectsThreshold = 5;
+  int objectsThreshold = 1;
   
   std::unordered_map<std::string, classification::ClassifiedObject> objectsTable;
   std::unordered_map<std::string, classification::ClassifiedObject>::iterator it_obj;
