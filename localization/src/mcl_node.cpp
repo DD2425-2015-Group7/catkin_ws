@@ -74,7 +74,7 @@ void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sens
         if(isLocalized){
             s.sigma = irSigma * ir_msg->array[i].max_range;
         }else{
-            s.sigma = 2 * irSigma * ir_msg->array[i].max_range;
+            s.sigma = 3 * irSigma * ir_msg->array[i].max_range;
         }
         double r = ir_msg->array[i].range;
         if(r < ir_msg->array[i].min_range || r > ir_msg->array[i].max_range){

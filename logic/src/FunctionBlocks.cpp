@@ -906,6 +906,7 @@ void FunctionBlocks::reportState(std::string text, int verbose)
     marker.pose.position.y = 1.8;
     marker.id = 1;
     marker.text = head + text;
+    speak(text);
     ROS_INFO("%s", marker.text.c_str());
     all_markers->markers.push_back(marker);
     
