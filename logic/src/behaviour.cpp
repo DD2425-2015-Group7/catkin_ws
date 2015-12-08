@@ -1,7 +1,7 @@
 #include "logic/FunctionBlocks.h"
 
 int safetyTime = 20; 
-const int explorationTimeout = 90/*300*/, fetchingTimeout = 180;
+const int explorationTimeout = 180/*300*/, fetchingTimeout = 180;
 geometry_msgs::Pose *startPose;
 FunctionBlocks *fb;
 const double radiusTolerance = 0.055, yawTolerance = 2*M_PI;
@@ -82,18 +82,17 @@ void explore(void)
         fb->reportState("Exploration goal reached.", 2);  
       goalSet = false;
     }
-    /*
+    
     if(fb->objectDetected()){
       fb->reportState("Exploring and object detected.", 2);  
       fb->stopRobotAStar();
       objectArray = fb->processObject();
       fb->reportState("Exploring and object processed.", 3);     
-      //      fb->add2map(objectArray);  
+      fb->add2map(objectArray);  
       fb->sendEvidence(objectArray);
       fb->go2goal(goal);
       fb->reportState("Exploration continues.", 2);  
     }
-    * */
     if(!fb->isLocalized()){
       fb->stopRobotAStar();
       localize();
@@ -212,8 +211,8 @@ int main(int argc, char **argv)
   ros::NodeHandle n("/behaviour");
   
   startPose = new geometry_msgs::Pose();
-  startPose->position.x = 0.22;//0.22; //0.2;                                
-  startPose->position.y = 0.66;//2.25; //0.2; 
+  startPose->position.x = 0.2;//0.22;//0.22; //0.2;                                
+  startPose->position.y = 0.2;//0.66;//2.25; //0.2; 
   startPose->orientation = tf::createQuaternionMsgFromYaw(0);
   
   fb = new FunctionBlocks(n);

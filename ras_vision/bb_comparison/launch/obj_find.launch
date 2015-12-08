@@ -11,7 +11,7 @@
 		<arg name="depth_registration" value="true"/>
 	  </include> -->
 	  <node pkg="plane_extraction" type="plane_extraction" respawn="false" name="plane_extraction" output="log">
-		<param name="average_file" value="/home/ras27/catkin_ws/src/plane_extraction/class_color/averageAll.csv"/>
+		<param name="average_file" value="$(find plane_extraction)/class_color/averageAll.csv"/>
 	  </node>
 	  <node pkg="bb_comparison" type="object_found" respawn="false" name="object_found" output="log" />
 </launch> 

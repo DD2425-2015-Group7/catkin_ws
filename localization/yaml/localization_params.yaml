@@ -1,7 +1,7 @@
 map_frame: "map"
 # 0.2 0.2 | 0.22 0.66
-map_offset_x: 0.22
-map_offset_y: 0.66
+map_offset_x: 0.2
+map_offset_y: 0.2
 odometry_frame: "odom"
 odometry_distance_bias_correction: 1.02
 odometry_angle_bias_correction: 0.986

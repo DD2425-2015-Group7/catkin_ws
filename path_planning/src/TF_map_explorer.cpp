@@ -64,6 +64,7 @@ void printCell()
         }
         std::cout<<""<<std::endl;
     }
+    std::cout<<""<<std::endl;
 }
 
 bool isPointFree(int row,int col)
@@ -98,8 +99,10 @@ bool isPointFree(int row,int col)
 
 geometry_msgs::Pose getPoint(int maxRow, int maxCol)
 {
-    int mapYsz = abs(maxRow - rowIndex) * cellSize;
-    int mapXsz = abs(maxCol - colIndex) * cellSize;
+    //std::cout<<"Resolution: "<<resolution<<std::endl;
+    ROS_INFO("GetPoint");
+    int mapYsz = abs(maxRow - rowIndex) * cellSize * resolution;
+    int mapXsz = abs(maxCol - colIndex) * cellSize * resolution;
 
     geometry_msgs::Pose rs;
 
@@ -121,35 +124,53 @@ geometry_msgs::Pose getPoint(int maxRow, int maxCol)
         left = true;
     }
 
+    int goalX;
+    int goalY;
 
     if(up&right)
     {
+        ROS_ERROR("Up&Right");
         do{
-            rs.position.x = currentPose.pose.position.x + mapXsz * (rand()/(RAND_MAX));
-            rs.position.y = currentPose.pose.position.y + mapYsz * (rand()/(RAND_MAX));
-        }while(!isPointFree((int)(rs.position.x / resolution),(int)(rs.position.y / resolution))); // Make sure this part
+            rs.position.x = currentPose.pose.position.x + mapXsz * ((double)rand()/(double)(RAND_MAX));
+            rs.position.y = currentPose.pose.position.y + mapYsz * ((double)rand()/(double)(RAND_MAX));
+            goalX = rs.position.x / resolution;
+            goalY = rs.position.y / resolution;
+
+            std::cout<<"goalX and goalY: "<<goalX <<" , "<<goalY<<std::endl;
+        }while(!isPointFree(goalY,goalX));
     }
-    if(up&left)
+    else if(up&left)
     {
         do{
-            rs.position.x = currentPose.pose.position.x + mapXsz * (rand()/(RAND_MAX));
-            rs.position.y = currentPose.pose.position.y - mapYsz * (rand()/(RAND_MAX));
-        }while(!isPointFree((int)(rs.position.x / resolution),(int)(rs.position.y / resolution)));
+            ROS_ERROR("Up&Left");
+            rs.position.x = currentPose.pose.position.x + mapXsz * ((double)rand()/(double)(RAND_MAX));
+            rs.position.y = currentPose.pose.position.y - mapYsz * ((double)rand()/(double)(RAND_MAX));
+            goalX = rs.position.x / resolution;
+            goalY = rs.position.y / resolution;
+        }while(!isPointFree(goalY,goalX));
     }
-    if(down&right)
+    else if(down&right)
     {
         do{
-            rs.position.x = currentPose.pose.position.x - mapXsz * (rand()/(RAND_MAX));
-            rs.position.y = currentPose.pose.position.y + mapYsz * (rand()/(RAND_MAX));
-        }while(!isPointFree((int)(rs.position.x / resolution),(int)(rs.position.y / resolution)));
+            ROS_ERROR("Down&Right");
+            rs.position.x = currentPose.pose.position.x - mapXsz * ((double)rand()/(double)(RAND_MAX));
+            rs.position.y = currentPose.pose.position.y + mapYsz * ((double)rand()/(double)(RAND_MAX));
+            goalX = rs.position.x / resolution;
+            goalY = rs.position.y / resolution;
+        }while(!isPointFree(goalY,goalX));
     }
-    if(down&left)
+    else if(down&left)
     {
         do{
-            rs.position.x = currentPose.pose.position.x - mapXsz * (rand()/(RAND_MAX));
-            rs.position.y = currentPose.pose.position.y - mapYsz * (rand()/(RAND_MAX));
-        }while(!isPointFree((int)(rs.position.x / resolution),(int)(rs.position.y / resolution)));
+            ROS_ERROR("Down&Left");
+            rs.position.x = currentPose.pose.position.x - mapXsz * ((double)rand()/(double)(RAND_MAX));
+            rs.position.y = currentPose.pose.position.y - mapYsz * ((double)rand()/(double)(RAND_MAX));
+            goalX = rs.position.x / resolution;
+            goalY = rs.position.y / resolution;
+        }while(!isPointFree(goalY,goalX));
     }
+
+    std::cout<<"first Return : "<< rs.position.x << " , " << rs.position.y<<std::endl;
 
     return rs;
 }
@@ -270,6 +291,7 @@ geometry_msgs::Pose nextExplore(int upRight,int upLeft,int downRight,int downLef
    }
 
    geometry_msgs::Pose goal = getPoint(maxRow,maxCol);
+   std::cout<<"Goal: "<< goal.position.x << " , " <<goal.position.y<<std::endl;
    return goal;
 }
 
@@ -318,12 +340,14 @@ geometry_msgs::Pose divieFourSections()
         }
     }
 
-    //std::cout<<"Amount of UpRight cells : " << upRight <<std::endl;
-    //std::cout<<"Amount of UpLeft cells : " << upLeft <<std::endl;
-    //std::cout<<"Amount of DownRight cells : " << downRight <<std::endl;
-    //std::cout<<"Amount of DownLeft cells : " << downLeft <<std::endl;
+    std::cout<<"Amount of UpRight cells : " << upRight <<std::endl;
+    std::cout<<"Amount of UpLeft cells : " << upLeft <<std::endl;
+    std::cout<<"Amount of DownRight cells : " << downRight <<std::endl;
+    std::cout<<"Amount of DownLeft cells : " << downLeft <<std::endl;
     geometry_msgs::Pose goal = nextExplore(upRight,upLeft,downRight,downLeft, rowIndex, colIndex);
+    ROS_INFO("Done here");
     return goal;
+
     //printCell();
 }
 
@@ -422,9 +446,9 @@ void updateCells()
         }
     }
     cells[rowIndex][colIndex] = 1;
-    //printCell();
+    printCell();
 }
-
+/*
 geometry_msgs::Pose getGoalPose()
 {
     geometry_msgs::Pose goal = divieFourSections();
@@ -436,6 +460,7 @@ bool NextGoal(path_planning::NextGoal::Request &req, path_planning::NextGoal::Re
   res.goal = getGoalPose();
   return true;
 }
+*/
 
 int main(int argc, char **argv)
 {
@@ -457,7 +482,8 @@ int main(int argc, char **argv)
 
   map_client = new ros::ServiceClient();
   *map_client = handle.serviceClient<map_tools::GetMap>("/map_node/get_map");
-  ros::ServiceServer goal_srv = handle.advertiseService("/nextExplorePose", NextGoal);
+  ros::Publisher pub_goal = handle.advertise<geometry_msgs::Pose>("/goalPose",10);
+  //ros::ServiceServer goal_srv = handle.advertiseService("/nextExplorePose", NextGoal);
   updateMap();
   tf_listener = new tf::TransformListener();
   dividMap(*map);
@@ -467,6 +493,8 @@ int main(int argc, char **argv)
     {
       updateMap();
       updateCells();
+      geometry_msgs::Pose p = divieFourSections();
+      pub_goal.publish(p);
       ros::spinOnce();
       loop_rate.sleep();
     }
