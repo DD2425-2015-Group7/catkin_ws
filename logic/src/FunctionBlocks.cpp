@@ -333,6 +333,31 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 
 void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
 {   
+    std::string TargetFrameName = "/map";
+    std::string CurrentFrame = "/base_link";
+
+    geometry_msgs::PoseStamped startPose;
+    geometry_msgs::PoseStamped p;
+    p.header.frame_id = CurrentFrame;
+    p.header.stamp = ros::Time(0);
+    p.pose.position.x = 0.0;
+    p.pose.position.y = 0.0;
+    p.pose.position.z = 0.0;
+    p.pose.orientation.x = 0.0;
+    p.pose.orientation.y = 0.0;
+    p.pose.orientation.z = 0.0;
+    p.pose.orientation.w = 1.0;
+
+    try
+    {
+      tf_listener->waitForTransform(TargetFrameName, CurrentFrame, ros::Time(0), ros::Duration(1.0) );
+      tf_listener->transformPose(TargetFrameName,p,startPose);
+    }
+    catch(tf::TransformException &ex)
+    {
+      ROS_ERROR("%s",ex.what());
+    }
+    obj.viewPose = startPose.pose;
 }
 
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
