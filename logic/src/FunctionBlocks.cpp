@@ -197,6 +197,27 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   //TODO: process also point p2_debris for debris.
   ROS_INFO("Processing start");
   classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
+  this->speak(lastSeen.name); 
+
+  classification::ClassifiedObjectArray verifiedObjects;
+  
+  verifiedObjects.header.frame_id = objectsVision->header.frame_id;
+
+  verifiedObjects.objects.push_back(lastSeen);  
+
+  // We reset the Array
+  objectsVision->objects.clear();
+
+  objDetectTimeout = 0;
+  
+  return verifiedObjects;
+}
+
+classification::ClassifiedObjectArray FunctionBlocks::processObjectSophisticated(void)
+{
+  //TODO: process also point p2_debris for debris.
+  ROS_INFO("Processing start");
+  classification::ClassifiedObject lastSeen = objectsVision->objects[objectsVision->objects.size()-1];
   this->speak("Object detected"); 
   this->speak(lastSeen.name);
   std::cout << "Last object seen: coordinates: y= " << lastSeen.p.y << "x= " << lastSeen.p.x << std::endl;
@@ -287,7 +308,7 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
 			    );
       } else {
         
-	/******** TEST Don't do anything ********/
+	/******** If we want to do the average of the presumed same objects attributes********/
 	// //Average of the point
 	// objectsTable[current.name].p.x = objectsTable[current.name].p.x + current.p.x;
 	// objectsTable[current.name].p.y = objectsTable[current.name].p.y + current.p.y;
@@ -331,8 +352,34 @@ classification::ClassifiedObjectArray FunctionBlocks::processObject(void)
   return verifiedObjects;
 }
 
+
 void FunctionBlocks::setViewPose(classification::ClassifiedObject& obj)
 {   
+    std::string TargetFrameName = "/map";
+    std::string CurrentFrame = "/base_link";
+
+    geometry_msgs::PoseStamped startPose;
+    geometry_msgs::PoseStamped p;
+    p.header.frame_id = CurrentFrame;
+    p.header.stamp = ros::Time(0);
+    p.pose.position.x = 0.0;
+    p.pose.position.y = 0.0;
+    p.pose.position.z = 0.0;
+    p.pose.orientation.x = 0.0;
+    p.pose.orientation.y = 0.0;
+    p.pose.orientation.z = 0.0;
+    p.pose.orientation.w = 1.0;
+
+    try
+    {
+      tf_listener->waitForTransform(TargetFrameName, CurrentFrame, ros::Time(0), ros::Duration(1.0) );
+      tf_listener->transformPose(TargetFrameName,p,startPose);
+    }
+    catch(tf::TransformException &ex)
+    {
+      ROS_ERROR("%s",ex.what());
+    }
+    obj.viewPose = startPose.pose;
 }
 
 void FunctionBlocks::add2map(classification::ClassifiedObjectArray& objects)
@@ -881,6 +928,7 @@ void FunctionBlocks::reportState(std::string text, int verbose)
     marker.pose.position.y = 1.8;
     marker.id = 1;
     marker.text = head + text;
+    speak(text);
     ROS_INFO("%s", marker.text.c_str());
     all_markers->markers.push_back(marker);
     

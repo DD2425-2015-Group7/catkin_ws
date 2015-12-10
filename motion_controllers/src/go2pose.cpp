@@ -12,7 +12,7 @@ double maxLinSpeed = 0.2, maxOnSpot = 2.0, minOnSpot = 1.0;
 double maxLinAcc = 0.4, maxAngAcc = 5.0;
 double p_angle_lin = 0.5, p_angle_spot = 1.5;
 double irFrontMax = 0.8, irFrontMin = 0.1;
-double irSideMax = 0.2, irSideMin = 0.04, irSideMaxDiff = 0.05;
+double irSideMax = 0.2, irSideMin = 0.04, irSideMinRatio = 0.8;
 double robotSafetyRadius = 0.15;
 bool wallFollowingEnabled = true;
 double p_wall_alpha = 25;
@@ -77,15 +77,25 @@ int wallAvailable(void)
     
     if(distance_rights_front > irSideMin && distance_rights_front < irSideMax
         && distance_rights_back > irSideMin && distance_rights_back < irSideMax){
-            if(abs(distance_rights_back - distance_rights_front) < irSideMaxDiff){
-                return 1;
+            if(distance_rights_back > distance_rights_front){
+                if(distance_rights_front/distance_rights_back > irSideMinRatio)
+                    return 1;
+            }
+            if(distance_rights_back < distance_rights_front){
+                if(distance_rights_back/distance_rights_front > irSideMinRatio)
+                    return 1;
             }
     }
     
     if(distance_lefts_front > irSideMin && distance_lefts_front < irSideMax
         && distance_lefts_back > irSideMin && distance_lefts_back < irSideMax){
-            if(abs(distance_lefts_back - distance_lefts_front) < irSideMaxDiff){
-                return -1;
+            if(distance_lefts_back > distance_lefts_front){
+                if(distance_lefts_front/distance_lefts_back > irSideMinRatio)
+                    return -1;
+            }
+            if(distance_lefts_back < distance_lefts_front){
+                if(distance_lefts_back/distance_lefts_front > irSideMinRatio)
+                    return -1;
             }
     }
     

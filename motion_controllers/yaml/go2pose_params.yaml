@@ -2,7 +2,7 @@ p_angle_lin: 2.0
 yaw_tolerance_low: 0.15
 yaw_tolerance_high: 0.25
 distance_tolerance_low: 0.02
-distance_tolerance_high: 0.03
+distance_tolerance_high: 0.04
 max_lin_speed: 0.2
 max_on_spot_angular_speed: 1.5
 max_lin_acc: 0.3

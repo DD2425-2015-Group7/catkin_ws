@@ -435,7 +435,7 @@ public:
                             std::cerr<<"color: "<< color<<std::endl;
                             cloud_cluster->header = cloud_filtered->header;
                             pcl::toROSMsg(*cloud_cluster, out);
-                            c_pub.publish(out);
+                            //c_pub.publish(out);
                         //}
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;

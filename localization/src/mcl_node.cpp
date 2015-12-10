@@ -74,7 +74,7 @@ void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sens
         if(isLocalized){
             s.sigma = irSigma * ir_msg->array[i].max_range;
         }else{
-            s.sigma = 2 * irSigma * ir_msg->array[i].max_range;
+            s.sigma = 3 * irSigma * ir_msg->array[i].max_range;
         }
         double r = ir_msg->array[i].range;
         if(r < ir_msg->array[i].min_range || r > ir_msg->array[i].max_range){
@@ -325,9 +325,9 @@ int main(int argc, char **argv)
     n.param<double>("mcl_afast", afast, 0.2);
     n.param<double>("mcl_crash_radius", crashRadius, 0.1);
     n.param<double>("mcl_crash_yaw", crashYaw, 0.2);
-    n.param<double>("mcl_good_std_xy", stdXY, 0.1);
+    n.param<double>("mcl_good_std_xy", stdXY, 0.05);
     n.param<double>("mcl_good_std_yaw", stdYaw, 0.6);
-    n.param<double>("mcl_localized_std_xy", locStdXY, 0.1);
+    n.param<double>("mcl_localized_std_xy", locStdXY, 0.05);
     n.param<double>("mcl_localized_std_yaw", locStdYaw, 0.6);
 
     tf::TransformBroadcaster broadcaster_obj;

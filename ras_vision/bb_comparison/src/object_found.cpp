@@ -167,8 +167,9 @@ public:
             obj.p = p;
             obj_array.objects.push_back(obj);
         }
-        comp_p_pub.publish(obj_array);
-
+        if(!(obj_array.objects.size()==0)){
+            comp_p_pub.publish(obj_array);
+        }
     }
 };
 
