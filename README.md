@@ -40,5 +40,6 @@ In all cases the camera launch file needs to be run, and then choose between 2.1
 Record Data
 -----------
 If you want to record data from the system you can use.
+	```
 	roslaunch launch record_small.launch
-
+	```
