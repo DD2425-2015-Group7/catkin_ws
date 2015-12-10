@@ -6,7 +6,8 @@ odometry_frame: "odom"
 odometry_distance_bias_correction: 1.02
 odometry_angle_bias_correction: 0.986
 robot_base_link: "base_link"
-mcl_particles: 16000
+# 16000 particles
+mcl_particles: 32000
 mcl_rate: 5
 mcl_init_cone_radius: 0.2
 mcl_init_yaw_variance: 0.15

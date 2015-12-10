@@ -26,7 +26,7 @@ bool MonteCarlo::run(struct PoseState odom, double mapXsz, double mapYsz)
 {
     // Do not do anything when we are not moving.
     avgAndStd();
-    if(odom.magnitude() < minDelta)
+    if(std::sqrt(odom.x * odom.x + odom.y * odom.y) < minDelta)
         return false;
     this->mapXsz = mapXsz;
     this->mapYsz = mapYsz;
