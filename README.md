@@ -11,22 +11,31 @@ The purpose of this project is to create a small robot which is able to maneuver
 
 How to Compile
 --------------
-	Run "catkin_make" in the workspace of interest
+Run 
+	```
+	catkin_make 
+	```
+in the workspace of interest
 
 How to Run
 ----------
-	There are three launch files located in the launch package needed in order to run the system.
-	In all cases the camera launch file needs to be run, and then choose between 2.1 and 2.2 depending on what phase you want to run. 
+There are three launch files located in the launch package needed in order to run the system.
+In all cases the camera launch file needs to be run, and then choose between 2.1 and 2.2 depending on what phase you want to run. 
 	
 1. Launch Camera	
-	roslaunch launch camera.launch (start the camera and check if data is published)
-	
+	(start the camera and check if data is published)
+	```
+	roslaunch launch camera.launch 
+	```
 2. 
 	1. Launch Exploration
+		```
 		roslaunch launch explore.launch
-	
+		```
    	2. Launch Fetching 
+   		``` 
 		roslaunch launch fetch.launch
+		```
 
 Record Data
 -----------
