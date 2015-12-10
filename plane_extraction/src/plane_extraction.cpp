@@ -57,7 +57,7 @@ public:
         ros::param::get("~average_file",color_path);
         c_pub = n.advertise<sensor_msgs::PointCloud2> ("/clustered_object_cloud", 1);
         obj_loc_pub = n.advertise<geometry_msgs::PolygonStamped>("/object_point/uncompared",20);
-        //bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
+        bb_publish =  n.advertise<plane_extraction::BoundingBox_FloatArray>("/pointCloud_detector/bounding_boxes", 50); //detection::BoundingBoxArray>
         i_pub = n.advertise<sensor_msgs::Image> ("/object_detection/Image",20);
 
         message_filters::Subscriber<sensor_msgs::PointCloud2> Cloud(n, "/camera/depth_registered/points", 30);
@@ -435,7 +435,7 @@ public:
                             std::cerr<<"color: "<< color<<std::endl;
                             cloud_cluster->header = cloud_filtered->header;
                             pcl::toROSMsg(*cloud_cluster, out);
-                            c_pub.publish(out);
+                            //c_pub.publish(out);
                         //}
                         Eigen::Vector4f centroid;
                         geometry_msgs::Point p;
