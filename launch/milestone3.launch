@@ -9,15 +9,14 @@
   <include file="$(find ir_sensors)/launch/publish.launch" />
   <include file="$(find localization)/launch/localize.launch" />
   <node pkg="wall_follower" type="wall_follower" respawn="false" name="wall_follower" output="screen" required="true" />
-    
-  
+
+<!--    
   <include file="$(find openni2_launch)/launch/openni2.launch">
     <arg name="depth_registration" value="true"/>
   </include>
+-->
   <include file="$(find bb_comparison)/launch/obj_find.launch" />
 
   <node pkg = "ras_espeak" type = "espeak_node" respawn = "false" name = "espeak_node" output = "log"/>
-  <node pkg="path_planning" type="Astar" respawn="false" name="Astar" output="screen" required="true" />
-  <node pkg="logic" type="behaviour" respawn="false" name="behaviour" output="screen" required="true" />
   
 </launch> 

@@ -1,26 +1,29 @@
 map_frame: "map"
+# 0.2 0.2 | 0.22 0.66
 map_offset_x: 0.2
 map_offset_y: 0.2
 odometry_frame: "odom"
 odometry_distance_bias_correction: 1.02
 odometry_angle_bias_correction: 0.986
 robot_base_link: "base_link"
-mcl_particles: 400
+# 16000 particles
+mcl_particles: 32000
 mcl_rate: 5
 mcl_init_cone_radius: 0.2
 mcl_init_yaw_variance: 0.15
-mcl_min_position_delta: 0.001
+mcl_min_position_delta: 0.05
 mcl_aslow: 0.0002
 mcl_afast: 0.02
 mcl_crash_radius: 0.1
 mcl_crash_yaw: 0.5
 
-# a1: rot <- rot, a2: rot <- trans
-# a3: trans <- trans, a4: trans <- rot
-odometry_model_a1: 0.03
-odometry_model_a2: 0.03
+# a1: 0.03 rot <- rot, a2: 0.03 rot <- trans
+# a3: 0.02 trans <- trans, a4: 0.02 trans <- rot
+odometry_model_a1: 0.02
+odometry_model_a2: 0.02
 odometry_model_a3: 0.02 
 odometry_model_a4: 0.02
+# sigma_hit 0.2, z_hit 0.8, z_random_over_z_max 0.2
 ir_model_sigma_hit: 0.2
 ir_model_z_hit: 0.8
 ir_model_z_random_over_z_max: 0.2

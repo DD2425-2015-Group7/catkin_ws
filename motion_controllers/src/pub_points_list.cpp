@@ -56,8 +56,7 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
     }
     if(nextPoint > path.poses.size() - 1)
     {
-        ROS_INFO("Destination reached");
-        //set velocity to zero
+        //Destination reached, set velocity to zero.
         goalPose.pose.position.x = 0.0;
         goalPose.pose.position.y = 0.0;
         stopped = true;
@@ -95,9 +94,6 @@ void calculatePosition(const nav_msgs::Odometry::ConstPtr& msg)
             nextPoint++;
         }
     }
-
-    ROS_INFO("Goal Point X :%f",goalPose.pose.position.x);
-    ROS_INFO("Goal Point Y :%f",goalPose.pose.position.y);
     
     if(!(stopped && lastStopped)) {
       pub_pose->publish(goalPose.pose);
@@ -110,11 +106,15 @@ int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "pub_points_list");
     ros::NodeHandle handle;
+    
+    handle.param<double>("distance_tolerance_high", closeEnough, 0.05);
 
     ros::Subscriber sub_odo = handle.subscribe<nav_msgs::Odometry>("/odom",1000,calculatePosition);
     ros::Publisher pub_pose_obj = handle.advertise<geometry_msgs::Pose>("/path_pose", 1000);
 
     ros::ServiceServer getPathPoints_server = handle.advertiseService("/motion_controllers/PathPointsExec", GetPathPoints);
+    
+    
 
     pub_pose = &pub_pose_obj;
 

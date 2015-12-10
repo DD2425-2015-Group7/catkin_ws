@@ -91,32 +91,56 @@ public:
             int32_t id;
            // std::cerr << "color: "<< msg_b->bounding_boxes[i].prob << std::endl;
             switch(int(msg_b->bounding_boxes[i].prob)){
-            case 0:
-                color = "red";
-                id = 1;
-                break;
             case 1:
-                color = "green";
+                color = "Red Cube";
                 id = 1;
                 break;
             case 2:
-                color = "blue";
-                id = 1;
+                color = "Red Hollow Cube";
+                id = 2;
                 break;
             case 3:
-                color = "orange";
-                id = 1;
+                color = "Blue Cube";
+                id = 3;
+                break;
+            case 4:
+                color = "Green Cube";
+                id = 4;
                 break;
 
-            case 4:
-                color = "yellow";
-                id = 1;
-                break;
             case 5:
-                color = "purple";
-                id = 1;
+                color = "Yellow Cube";
+                id = 5;
                 break;
             case 6:
+                color = "Yellow Ball";
+                id = 6;
+                break;
+            case 7:
+                color = "Red Ball";
+                id = 7;
+                break;
+            case 8:
+                color = "Green Cylinder";
+                id = 8;
+                break;
+            case 9:
+                color = "Blue Triangle";
+                id = 9;
+                break;
+            case 10:
+                color = "Purple Cross";
+                id  = 10;
+                break;
+            case 11:
+                color = "Purple Star";
+                id = 11;
+                break;
+            case 12:
+                color = "Patric";
+                id = 12;
+                break;
+            case 13:
                 color = "debris";//"gray";
                 id = 13;
                 p.x = x;
@@ -124,32 +148,13 @@ public:
                 p2.x = x;
                 p2.y = y+size_debris_length;
                 break;
-            case 7:
-                color = "debris";//"black"
-                id = 13;
-                p.x = x+size_debris_length;
-                p.y = y;
-                p2.x = x-size_debris_length;
-                p2.y = y;
-                break;
-            case 8:
+            case 14:
                 color = "debris";
                 id = 13;
                 p.x = x+size_debris_length;
                 p.y = y;
                 p2.x = x-size_debris_length;
                 p2.y = y;
-                break;
-            case 9:
-                color = "debris";
-                id = 13;
-                p.x = x;
-                p.y = y-size_debris_length;
-                p2.x = x;
-                p2.y = y+size_debris_length;
-                break;
-            default:
-                color = "white";
                 break;
 
 
@@ -162,8 +167,9 @@ public:
             obj.p = p;
             obj_array.objects.push_back(obj);
         }
-        comp_p_pub.publish(obj_array);
-
+        if(!(obj_array.objects.size()==0)){
+            comp_p_pub.publish(obj_array);
+        }
     }
 };
 

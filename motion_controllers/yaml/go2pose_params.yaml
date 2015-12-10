@@ -1,9 +1,11 @@
 p_angle_lin: 2.0
-yaw_tolerance_low: 0.2
-yaw_tolerance_high: 0.3
-distance_tolerance_low: 0.03
-distance_tolerance_high: 0.05
+yaw_tolerance_low: 0.15
+yaw_tolerance_high: 0.25
+distance_tolerance_low: 0.02
+distance_tolerance_high: 0.04
 max_lin_speed: 0.2
 max_on_spot_angular_speed: 1.5
-max_lin_acc: 0.5
+max_lin_acc: 0.3
 max_ang_acc: 5.0
+go2pose_wall_following_enabled: true
+robot_safety_radius: 0.15

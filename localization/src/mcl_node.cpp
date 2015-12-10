@@ -1,6 +1,8 @@
 #include "math.h"
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Int32.h"
+#include "std_msgs/Bool.h"
 #include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PoseArray.h"
 #include "nav_msgs/Odometry.h"
@@ -22,10 +24,12 @@
 typedef message_filters::sync_policies::ApproximateTime<nav_msgs::Odometry, ir_sensors::RangeArray> SyncPolicy;
 
 std::string odomFrame, baseFrame, mapFrame;
+bool isLocalized = false;
 double irSigma;
 double initConeRadius, initYawVar;
 int minOccupied;
 bool mclEnabled;
+int mapVersion = -1;
 
 std::mutex mtx;
 struct Poses{
@@ -33,6 +37,7 @@ struct Poses{
     double x = 0.0, y = 0.0, th = 0.0;
 };
 struct Poses coords;
+tf::Stamped<tf::Pose> *odom2map;
 ros::Time current_time;
 
 tf::TransformBroadcaster *tf_broadcaster;
@@ -45,6 +50,8 @@ OdometryModel *om;
 RangeModel *irm;
 struct PoseState odomState;
 std::vector<RangeModel::Reading> irReadings;
+
+tf::Stamped<tf::Pose> mclTransform(void);
 
 void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sensors::RangeArray::ConstPtr& ir_msg)
 {
@@ -64,7 +71,11 @@ void odomRangeUpdate(const nav_msgs::Odometry::ConstPtr& odom_msg, const ir_sens
     ps.pose.orientation = tf::createQuaternionMsgFromYaw(0);
     
     for(int i = 0; i < ir_msg->array.size(); i++){
-        s.sigma = irSigma * ir_msg->array[i].max_range;
+        if(isLocalized){
+            s.sigma = irSigma * ir_msg->array[i].max_range;
+        }else{
+            s.sigma = 3 * irSigma * ir_msg->array[i].max_range;
+        }
         double r = ir_msg->array[i].range;
         if(r < ir_msg->array[i].min_range || r > ir_msg->array[i].max_range){
             s.x = 0.0;
@@ -143,6 +154,14 @@ bool isPointFree(double x, double y)
     return (v < minOccupied);
 }
 
+void mapVersionCB(const std_msgs::Int32::ConstPtr& msg) 
+{
+    if(mapVersion != msg->data){
+        updateMap();
+        mapVersion = msg->data;
+    }
+}
+
 void particles2PoseArray(const std::vector<MonteCarlo::StateW> &particles, geometry_msgs::PoseArray &pa)
 {
     geometry_msgs::Pose p;
@@ -163,23 +182,32 @@ void initMcl(const geometry_msgs::Pose::ConstPtr& p)
     double csz = mapInflated->info.resolution;
     double wc = ((double)mapInflated->info.width);
     double hc = ((double)mapInflated->info.height);
+    struct PoseState pose;
     assert(csz > 0.00001);
+    assert(!isnan(p->position.x));
+    assert(!isnan(p->position.y));
     if(p->position.z < 0.01){
-        struct PoseState pose;
         pose.set(0);
         pose.x = p->position.x;
         pose.y = p->position.y;
         pose.yaw = tf::getYaw(p->orientation);
+        assert(!isnan(pose.yaw));
         mc->init(pose, initConeRadius, initYawVar, wc*csz, hc*csz);
-        ROS_INFO("MCL init pose.");
+        coords.x = pose.x;
+        coords.y = pose.y;
+        coords.th = pose.yaw;
+        //current_time = ros::Time::now();
+        //*odom2map = mclTransform();
+        ROS_INFO("MCL init pose. x %f y %f th %f", coords.x, coords.y, coords.th);
     }else{
         mc->init(wc*csz, hc*csz);
         ROS_INFO("MCL init unknown.");
     }
     mclEnabled = true;
+    
 }
 
-void runMonteCarlo(void)
+bool runMonteCarlo(void)
 {
     struct PoseState var, avg;
     double dx, dy, dth;
@@ -188,9 +216,10 @@ void runMonteCarlo(void)
     mtx.unlock();
     double csz = mapInflated->info.resolution;
     assert(csz > 0.00001);
-    mc->run(odomState, ((double)mapInflated->info.width)*csz,
+    return mc->run(odomState, ((double)mapInflated->info.width)*csz,
                         ((double)mapInflated->info.height)*csz);
     
+    /*
     var = mc->getStd();
     avg = mc->getState();
     if(var.x < 0.4 && var.y < 0.4){
@@ -201,25 +230,30 @@ void runMonteCarlo(void)
         coords.y = avg.y;
         coords.th = avg.yaw;
     }
+    * */
 }
 
 tf::Stamped<tf::Pose> mclTransform(void)
 {
-    tf::Stamped<tf::Pose> odom2map;
+    tf::Stamped<tf::Pose> _odom2map;
+    assert(!isnan(coords.th));
+    assert(!isnan(coords.x));
+    assert(!isnan(coords.y));
+    
     try{
         tf::Transform tmp(tf::createQuaternionFromYaw(coords.th),
                              tf::Vector3(coords.x, coords.y, 0.0));
         tf::Stamped<tf::Pose> tmpStamped (tmp.inverse(), current_time, baseFrame);
-        tf_listener->transformPose(odomFrame, tmpStamped, odom2map);
+        tf_listener->transformPose(odomFrame, tmpStamped, _odom2map);
     }
     catch(tf::TransformException)
     {
         ROS_DEBUG("Map -> Odom transform failed.");
     }
-    return odom2map;
+    return _odom2map;
 }
 
-void publishTransform(tf::Stamped<tf::Pose> odom2map)
+void publishTransform(tf::Stamped<tf::Pose> _odom2map)
 {
     /*
     double x, y, th;
@@ -229,9 +263,8 @@ void publishTransform(tf::Stamped<tf::Pose> odom2map)
     ROS_INFO("x = %f y = %f th = %f",
         (x), (y), (th));
         * */
-        
-    tf::Transform tfom = tf::Transform(tf::Quaternion(odom2map.getRotation()),
-                                 tf::Point(odom2map.getOrigin()));
+    tf::Transform tfom = tf::Transform(tf::Quaternion(_odom2map.getRotation()),
+                                 tf::Point(_odom2map.getOrigin()));
     tf::StampedTransform map_trans_stamped(tfom.inverse(), current_time, mapFrame, odomFrame);
     tf_broadcaster->sendTransform(map_trans_stamped);
     
@@ -282,7 +315,7 @@ int main(int argc, char **argv)
     
     int nParticles, mcl_rate;
     double minDelta, aslow, afast;
-    double crashRadius, crashYaw, stdXY, stdYaw;
+    double crashRadius, crashYaw, stdXY, stdYaw, locStdXY, locStdYaw;
     n.param<int>("mcl_particles", nParticles, 200);
     n.param<int>("mcl_rate", mcl_rate, 5);
     n.param<double>("mcl_init_cone_radius", initConeRadius, 0.2);
@@ -292,20 +325,27 @@ int main(int argc, char **argv)
     n.param<double>("mcl_afast", afast, 0.2);
     n.param<double>("mcl_crash_radius", crashRadius, 0.1);
     n.param<double>("mcl_crash_yaw", crashYaw, 0.2);
-    n.param<double>("mcl_good_std_xy", stdXY, 0.1);
+    n.param<double>("mcl_good_std_xy", stdXY, 0.05);
     n.param<double>("mcl_good_std_yaw", stdYaw, 0.6);
+    n.param<double>("mcl_localized_std_xy", locStdXY, 0.05);
+    n.param<double>("mcl_localized_std_yaw", locStdYaw, 0.6);
 
     tf::TransformBroadcaster broadcaster_obj;
     tf_broadcaster = &broadcaster_obj;
     tf::TransformListener listener_obj;
     tf_listener = &listener_obj;
     
+    odom2map = new tf::Stamped<tf::Pose>;
+    
     message_filters::Subscriber<nav_msgs::Odometry> odom_sub(n, "/odom", 1);
     message_filters::Subscriber<ir_sensors::RangeArray> range_sub(n,"/ir_publish/sensors", 1);
     message_filters::Synchronizer<SyncPolicy> sync(SyncPolicy(10), odom_sub, range_sub);
     sync.registerCallback(boost::bind(&odomRangeUpdate, _1, _2));
     
+    ros::Subscriber map_version_sub = n.subscribe<std_msgs::Int32>("/map_node/version", 2, mapVersionCB);
+    
     ros::Publisher particle_pub_obj = n.advertise<geometry_msgs::PoseArray>("/mcl/particles", 5);
+    ros::Publisher localized_pub = n.advertise<std_msgs::Bool>("/mcl/is_localized", 5);
     geometry_msgs::PoseArray poseArray;
     poseArray.header.frame_id = mapFrame;
     
@@ -323,9 +363,11 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    struct PoseState pose, goodStd;
+    struct PoseState pose, goodStd, locStd;
     goodStd.set(stdXY);
     goodStd.yaw = stdYaw;
+    locStd.set(locStdXY);
+    locStd.yaw = locStdYaw;
     pose.set(0.0);
     pose.x += coords.x0;
     pose.y += coords.y0;
@@ -341,60 +383,97 @@ int main(int argc, char **argv)
     irm = new RangeModel(&getDist, irZhit, irZrm);
     mc->addSensor(irm);
     
-    ros::Subscriber init_mcl_sub = n.subscribe<geometry_msgs::Pose>("/mcl/initial_pose", 2, initMcl);
     
     double csz = mapInflated->info.resolution;
     double wc = ((double)mapInflated->info.width);
     double hc = ((double)mapInflated->info.height);
     assert(csz > 0.00001);
+    
     mc->init(pose, initConeRadius, initYawVar, wc*csz, hc*csz);
+    //mc->init(wc*csz, hc*csz);
+    
     mclEnabled = true;
 
     current_time = ros::Time::now();
-    int rate = 20, counter = 0;
+    int rate = 40, counter = 0;
     ros::Rate loop_rate(rate);
     
     if(!updateMap())
         return -1;
     
-    tf::Stamped<tf::Pose> odom2map;
-    odom2map = mclTransform();
+    *odom2map = mclTransform();
     struct PoseState odom0;
     bool firstMcl = true;
+    double dx = 0, dy = 0, dyaw = 0, dx1 = 0, dy1 = 0, dyaw1 = 0;
+    
+    std_msgs::Bool isLocalizedMsg;
+    isLocalizedMsg.data = isLocalized;
+    
+    ros::Subscriber init_mcl_sub = n.subscribe<geometry_msgs::Pose>("/mcl/initial_pose", 2, initMcl);
     
 	while (ros::ok())
 	{
+        if(!firstMcl){
+            dx = odomState.x - odom0.x;
+            dy = odomState.y - odom0.y;
+            dyaw = odomState.yaw - odom0.yaw;
+            
+            dx1 = dx;
+            dy1 = dy;
+            dyaw1 = dyaw;
+        }
+                
         if(counter % (rate/mcl_rate) == 0){
-            if(!updateMap()){
-                return -1;
-            } 
             if(mclEnabled){
                 if(firstMcl){
                     odom0 = odomState;
                     firstMcl = false;
                 }
-                double dx = odomState.x - odom0.x;
-                double dy = odomState.y - odom0.y;
+                
                 odom0 = odomState;
-                runMonteCarlo();
+                if(runMonteCarlo()){
+                    dx = 0;
+                    dy = 0;
+                    dyaw = 0;
+                }
                 particles2PoseArray(mc->getParticles(), poseArray);
                 particle_pub_obj.publish(poseArray);
-                //Do not update transform when rotating on spot.
-                if(std::sqrt(dx*dx + dy*dy) > 0.05/(double)mcl_rate)
-                    odom2map = mclTransform();
+                
+                struct PoseState std = mc->getStd();
+                if(std.x > locStd.x || std.y > locStd.y || std.yaw > locStd.yaw){
+                    isLocalized = false;
+                }else{
+                    isLocalized = true;
+                }
             }
-            
-            
+            isLocalizedMsg.data = isLocalized;
+            localized_pub.publish(isLocalizedMsg);
             counter = 0;
         }
+         
+        
         counter++;
-        publishTransform(odom2map);
+        
+        if(!firstMcl){
+            struct PoseState avg = mc->getState();
+            coords.x = avg.x + dx;
+            coords.y = avg.y + dy;
+            coords.th = avg.yaw + dyaw;
+            //Do not update transform when rotating quickly on spot.
+            if((std::sqrt(dx1*dx1 + dy1*dy1) > 0.03/(double)mcl_rate) 
+                    && isLocalized)
+                *odom2map = mclTransform();
+        }
+        
+        publishTransform(*odom2map);
 		ros::spinOnce();
 		loop_rate.sleep();
         
         ros::Duration last_update = ros::Time::now() - current_time;
         if(last_update > ros::Duration(1.2/(double)rate))
             current_time = ros::Time::now();
+            
+        
         
 	}
 

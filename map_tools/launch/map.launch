@@ -2,8 +2,8 @@
 <launch>
   <master auto="start"/>
    
-  <node pkg="map_tools" type="map_node" respawn="false" name="map_node" output="screen">
-    <param name="wall_file" value="$(find ras_maze_map)/maps/contest_rehearsal_maze.txt" />
+  <node pkg="map_tools" type="map_node" respawn="false" name="map_node" output="screen" required="true">
+    <param name="wall_file" value="$(find ras_maze_map)/maps/contest_maze.txt" />
     <rosparam file="$(find map_tools)/yaml/map.yaml" command="load" />
   </node>
   

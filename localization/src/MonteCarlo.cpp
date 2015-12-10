@@ -25,14 +25,14 @@ MonteCarlo::MonteCarlo(OdometryModel *om, bool (*isFree)(double, double),
 bool MonteCarlo::run(struct PoseState odom, double mapXsz, double mapYsz)
 {
     // Do not do anything when we are not moving.
-    if(odom.magnitude() < minDelta)
+    avgAndStd();
+    if(std::sqrt(odom.x * odom.x + odom.y * odom.y) < minDelta)
         return false;
     this->mapXsz = mapXsz;
     this->mapYsz = mapYsz;
     motionUpdate(odom); 
     wavg = sensorUpdate(belief);
     sample();
-    avgAndStd();
     return true;
 }
 
