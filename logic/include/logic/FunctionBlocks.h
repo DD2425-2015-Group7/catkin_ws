@@ -48,6 +48,7 @@ class FunctionBlocks
     
         //Vision and mapping.
         classification::ClassifiedObjectArray processObject(void);
+	classification::ClassifiedObjectArray processObjectSophisticated(void);
         void add2map(classification::ClassifiedObjectArray &);  //Includes cam_link -> map tf.
         bool sendObjects(classification::ClassifiedObjectArray& objects);
         void setViewPose(classification::ClassifiedObject& obj);
@@ -55,8 +56,7 @@ class FunctionBlocks
         bool objectDetected(void);
         bool loadObjects(std::string bagFile);
         bool saveObjects(std::string bagFile);
-
-        
+     
         //Motion.
 	nav_msgs::Path getPath(geometry_msgs::Pose&);
         double dist2goal(geometry_msgs::Pose&);
